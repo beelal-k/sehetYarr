@@ -38,6 +38,22 @@ export const navItems: NavItem[] = [
     items: [] // No child items
   },
   {
+    title: 'Patients',
+    url: '/dashboard/patients',
+    icon: 'users',
+    shortcut: ['p', 'p'],
+    isActive: false,
+    items: [] // No child items
+  },
+  {
+    title: 'Hospitals',
+    url: '/dashboard/hospitals',
+    icon: 'hospital',
+    shortcut: ['h', 'h'],
+    isActive: false,
+    items: [] // No child items
+  },
+  {
     title: 'Account',
     url: '#', // Placeholder as there is no direct link for the parent
     icon: 'billing',

@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
+import { clerkClient } from '@clerk/nextjs/server';
 import { UserModel } from '@/lib/models/user.model';
 import { Role } from '@/lib/enums';
 import { connectDB } from '@/lib/db/connect';
@@ -112,6 +113,10 @@ export async function POST(req: NextRequest) {
         logger.info('Handling user.deleted event for:', data.id);
         await handleUserDeleted(data);
         break;
+      case 'session.created':
+        logger.info('Handling session.created event for:', data.id);
+        await handleSessionCreated(data);
+        break;
       default:
         logger.info(`Unhandled webhook type: ${type}`);
     }
@@ -126,47 +131,84 @@ export async function POST(req: NextRequest) {
 async function handleUserCreated(data: ClerkWebhookEvent['data']) {
   logger.info('handleUserCreated called with data:', {
     id: data.id,
-    email_count: data.email_addresses.length,
+    email_count: data.email_addresses?.length || 0,
     first_name: data.first_name,
     last_name: data.last_name
   });
 
+  // If email addresses are missing from webhook, fetch from Clerk API
+  let userData = data;
+  if (!data.email_addresses || data.email_addresses.length === 0) {
+    logger.info('Email addresses missing from webhook, fetching from Clerk API');
+    try {
+      const client = await clerkClient();
+      const clerkUser = await client.users.getUser(data.id);
+      userData = {
+        ...data,
+        email_addresses: clerkUser.emailAddresses.map(email => ({
+          email_address: email.emailAddress,
+          verification: { status: email.verification?.status || 'unverified' }
+        })),
+        phone_numbers: clerkUser.phoneNumbers?.map(phone => ({
+          phone_number: phone.phoneNumber,
+          verification: { status: phone.verification?.status || 'unverified' }
+        })) || [],
+        image_url: clerkUser.imageUrl,
+        first_name: clerkUser.firstName,
+        last_name: clerkUser.lastName
+      };
+      logger.info('Fetched user data from Clerk API successfully');
+    } catch (error) {
+      logger.error('Failed to fetch user from Clerk API:', error);
+      throw new Error('No email address available and failed to fetch from Clerk API');
+    }
+  }
+
   const primaryEmail =
-    data.email_addresses.find(
+    userData.email_addresses.find(
       (email) => email.verification.status === 'verified'
-    ) || data.email_addresses[0];
+    ) || userData.email_addresses[0];
 
   if (!primaryEmail) {
-    logger.error('No email address found for user:', data.id);
+    logger.error('No email address found for user:', userData.id);
     throw new Error('No email address found');
   }
 
   const primaryPhone =
-    data.phone_numbers.find(
+    userData.phone_numbers?.find(
       (phone) => phone.verification.status === 'verified'
-    ) || data.phone_numbers[0];
+    ) || userData.phone_numbers?.[0];
 
-  const fullName = [data.first_name, data.last_name].filter(Boolean).join(' ');
+  const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(' ');
 
   logger.info('Creating user with email:', primaryEmail.email_address);
 
   try {
+    // Check if user already exists
+    const existingUser = await UserModel.findOne({ clerkId: userData.id });
+    
+    if (existingUser) {
+      logger.info('User already exists, updating instead:', userData.id);
+      await handleUserUpdated(userData);
+      return;
+    }
+
     const newUser = await UserModel.create({
-      clerkId: data.id,
+      clerkId: userData.id,
       email: primaryEmail.email_address,
       role: Role.STUDENT, // Default role
       name: fullName || undefined,
       profile: {
-        firstName: data.first_name || undefined,
-        lastName: data.last_name || undefined,
+        firstName: userData.first_name || undefined,
+        lastName: userData.last_name || undefined,
         fullName: fullName || undefined,
-        imageUrl: data.image_url || undefined,
+        imageUrl: userData.image_url || undefined,
         phoneNumber: primaryPhone?.phone_number || undefined,
-        birthday: data.birthday || undefined,
-        gender: data.gender || undefined
+        birthday: userData.birthday || undefined,
+        gender: userData.gender || undefined
       },
-      lastSignInAt: data.last_sign_in_at
-        ? new Date(data.last_sign_in_at)
+      lastSignInAt: userData.last_sign_in_at
+        ? new Date(userData.last_sign_in_at)
         : undefined,
       emailVerified: primaryEmail.verification.status === 'verified',
       phoneVerified: primaryPhone?.verification.status === 'verified' || false,
@@ -178,7 +220,13 @@ async function handleUserCreated(data: ClerkWebhookEvent['data']) {
       email: newUser.email,
       _id: newUser._id
     });
-  } catch (error) {
+  } catch (error: any) {
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      logger.warn('Duplicate user detected, updating instead:', userData.id);
+      await handleUserUpdated(userData);
+      return;
+    }
     logger.error('Error creating user:', error);
     throw error;
   }
@@ -250,6 +298,35 @@ async function handleUserDeleted(data: ClerkWebhookEvent['data']) {
     }
   } catch (error) {
     logger.error('Error deleting user:', error);
+    throw error;
+  }
+}
+
+async function handleSessionCreated(data: ClerkWebhookEvent['data']) {
+  logger.info('handleSessionCreated called for user:', data.id);
+
+  try {
+    // Check if user exists in database
+    const existingUser = await UserModel.findOne({ clerkId: data.id });
+
+    if (existingUser) {
+      // Update last sign-in time
+      await UserModel.findOneAndUpdate(
+        { clerkId: data.id },
+        { 
+          lastSignInAt: data.last_sign_in_at ? new Date(data.last_sign_in_at) : new Date(),
+          updatedAt: new Date() 
+        },
+        { new: true }
+      );
+      logger.info('User last sign-in updated:', data.id);
+    } else {
+      // User doesn't exist, create them (handles OAuth sign-ins)
+      logger.info('User not found during session creation, creating user:', data.id);
+      await handleUserCreated(data);
+    }
+  } catch (error) {
+    logger.error('Error handling session creation:', error);
     throw error;
   }
 }
