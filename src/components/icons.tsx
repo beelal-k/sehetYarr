@@ -34,7 +34,10 @@ import {
   IconBrandLine,
   IconHospital,
   IconUsers,
+  IconUserHeart,
+  IconForms,
 } from '@tabler/icons-react';
+import App from 'next/app';
 
 export type Icon = React.ComponentType<IconProps>;
 
@@ -73,4 +76,6 @@ export const Icons = {
   check: IconCheck,
   hospital: IconHospital,
   users: IconUsers,
+  doctors: IconUserHeart,
+  appointments: IconForms,
 };

@@ -33,7 +33,7 @@ export const navItems: NavItem[] = [
     title: 'Product',
     url: '/dashboard/product',
     icon: 'product',
-    shortcut: ['p', 'p'],
+    shortcut: ['r', 'r'],
     isActive: false,
     items: [] // No child items
   },
@@ -42,6 +42,22 @@ export const navItems: NavItem[] = [
     url: '/dashboard/patients',
     icon: 'users',
     shortcut: ['p', 'p'],
+    isActive: false,
+    items: [] // No child items
+  },
+  {
+    title: 'Doctors',
+    url: '/dashboard/doctors',
+    icon: 'doctors',
+    shortcut: ['d', 'd'],
+    isActive: false,
+    items: [] // No child items
+  },
+  {
+    title: 'Appointments',
+    url: '/dashboard/appointments',
+    icon: 'appointments',
+    shortcut: ['a', 'a'],
     isActive: false,
     items: [] // No child items
   },
