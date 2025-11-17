@@ -36,6 +36,7 @@ import {
   IconUsers,
   IconUserHeart,
   IconForms,
+  IconFiles,
 } from '@tabler/icons-react';
 import App from 'next/app';
 
@@ -78,4 +79,5 @@ export const Icons = {
   users: IconUsers,
   doctors: IconUserHeart,
   appointments: IconForms,
+  records: IconFiles,
 };

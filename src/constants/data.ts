@@ -70,6 +70,14 @@ export const navItems: NavItem[] = [
     items: [] // No child items
   },
   {
+    title: 'Medical Records',
+    url: '/dashboard/medical-records',
+    icon: 'records',
+    shortcut: ['m', 'm'],
+    isActive: false,
+    items: [] // No child items
+  },
+  {
     title: 'Account',
     url: '#', // Placeholder as there is no direct link for the parent
     icon: 'billing',
