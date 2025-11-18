@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db/connect';
-import { AppointmentModel } from '@/lib/models/appointment.model';
-import { AppointmentStatus, Priority } from '@/lib/enums';
-import { logger } from '@/lib/utils/logger';
-import { isValidObjectId } from 'mongoose';
+import { NextRequest, NextResponse } from "next/server";
+import { connectDB } from "@/lib/db/connect";
+import { AppointmentModel } from "@/lib/models/appointment.model";
+import { AppointmentStatus, Priority } from "@/lib/enums";
+import { logger } from "@/lib/utils/logger";
+import { isValidObjectId } from "mongoose";
 
 // GET - Get all appointments or search
 export async function GET(req: NextRequest) {
@@ -11,13 +11,13 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const { searchParams } = new URL(req.url);
-    const patientId = searchParams.get('patientId');
-    const doctorId = searchParams.get('doctorId');
-    const hospitalId = searchParams.get('hospitalId');
-    const status = searchParams.get('status');
-    const priority = searchParams.get('priority');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const patientId = searchParams.get("patientId");
+    const doctorId = searchParams.get("doctorId");
+    const hospitalId = searchParams.get("hospitalId");
+    const status = searchParams.get("status");
+    const priority = searchParams.get("priority");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
 
     const query: any = {};
 
@@ -33,7 +33,10 @@ export async function GET(req: NextRequest) {
       query.hospitalId = hospitalId;
     }
 
-    if (status && Object.values(AppointmentStatus).includes(status as AppointmentStatus)) {
+    if (
+      status &&
+      Object.values(AppointmentStatus).includes(status as AppointmentStatus)
+    ) {
       query.status = status;
     }
 
@@ -42,9 +45,9 @@ export async function GET(req: NextRequest) {
     }
 
     const appointments = await AppointmentModel.find(query)
-      .populate('patientId', 'name cnic contact')
-      .populate('doctorId', 'name specialization contact')
-      .populate('hospitalId', 'name type location')
+      .populate("patientId", "name cnic contact")
+      .populate("doctorId", "name specialization contact")
+      .populate("hospitalId", "name type location")
       .skip((page - 1) * limit)
       .limit(limit)
       .sort({ appointmentDate: -1 });
@@ -58,13 +61,13 @@ export async function GET(req: NextRequest) {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
-    logger.error('Error fetching appointments:', error);
+    logger.error("Error fetching appointments:", error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch appointments' },
+      { success: false, error: "Failed to fetch appointments" },
       { status: 500 }
     );
   }
@@ -84,16 +87,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Missing required fields: patientId, doctorId, hospitalId, appointmentDate, status'
+          error:
+            "Missing required fields: patientId, doctorId, hospitalId, appointmentDate, status",
         },
         { status: 400 }
       );
     }
 
     // Validate ObjectIds
-    if (!isValidObjectId(patientId) || !isValidObjectId(doctorId) || !isValidObjectId(hospitalId)) {
+    if (
+      !isValidObjectId(patientId) ||
+      !isValidObjectId(doctorId) ||
+      !isValidObjectId(hospitalId)
+    ) {
       return NextResponse.json(
-        { success: false, error: 'Invalid patient, doctor, or hospital ID' },
+        { success: false, error: "Invalid patient, doctor, or hospital ID" },
         { status: 400 }
       );
     }
@@ -103,7 +111,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: `Invalid status. Must be one of: ${Object.values(AppointmentStatus).join(', ')}`
+          error: `Invalid status. Must be one of: ${Object.values(AppointmentStatus).join(", ")}`,
         },
         { status: 400 }
       );
@@ -114,7 +122,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: `Invalid priority. Must be one of: ${Object.values(Priority).join(', ')}`
+          error: `Invalid priority. Must be one of: ${Object.values(Priority).join(", ")}`,
         },
         { status: 400 }
       );
@@ -124,23 +132,26 @@ export async function POST(req: NextRequest) {
     const date = new Date(appointmentDate);
     if (isNaN(date.getTime())) {
       return NextResponse.json(
-        { success: false, error: 'Invalid appointment date format' },
+        { success: false, error: "Invalid appointment date format" },
         { status: 400 }
       );
     }
 
     const appointment = await AppointmentModel.create(body);
 
-    logger.info('Appointment created:', appointment._id);
+    logger.info("Appointment created:", appointment._id);
 
     return NextResponse.json(
       { success: true, data: appointment },
       { status: 201 }
     );
   } catch (error: any) {
-    logger.error('Error creating appointment:', error);
+    logger.error("Error creating appointment:", error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to create appointment' },
+      {
+        success: false,
+        error: error.message || "Failed to create appointment",
+      },
       { status: 500 }
     );
   }

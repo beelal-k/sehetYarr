@@ -2,6 +2,7 @@
 
 import { io, Socket } from "socket.io-client";
 import Cookies from "js-cookie";
+import { Cookie } from "next/font/google";
 
 let socketInstance: Socket | null = null;
 

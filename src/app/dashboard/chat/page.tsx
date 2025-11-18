@@ -58,6 +58,7 @@ import { nanoid } from 'nanoid';
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { llmChatService } from '@/services/llmChat';
+import { useUser } from '@clerk/nextjs';
 
 type MessageType = {
   key: string;
@@ -109,6 +110,7 @@ const mockResponses = [
 const Example = () => {
   const [model, setModel] = useState<string>(models[0].id);
   const [text, setText] = useState<string>('');
+  const {user} = useUser();
   const [useWebSearch, setUseWebSearch] = useState<boolean>(false);
   const [useMicrophone, setUseMicrophone] = useState<boolean>(false);
   const [status, setStatus] = useState<
@@ -121,6 +123,7 @@ const Example = () => {
   const [chatId, setChatId] = useState<string>('');
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const streamingContentRef = useRef<string>('');
+  const streamingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Initialize chat session on mount
   useEffect(() => {
     const initChat = async () => {
@@ -143,6 +146,7 @@ const Example = () => {
           duration: 10000,
         });
         setStatus('error');
+        setIsInitialized(false);
       }
     };
 
@@ -157,61 +161,59 @@ const Example = () => {
 
   // Setup socket event listeners
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || !chatId) return;
 
     // Handle incoming chunks from AI
     const handleChunk = (data: { chunk: string }) => {
-      streamingContentRef.current += data.chunk;
       
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.key === streamingMessageId && msg.type !== 'thinking') {
-            return {
-              ...msg,
-              versions: msg.versions.map((v) =>
-                v.id === streamingMessageId
-                  ? { ...v, content: streamingContentRef.current }
-                  : v
-              )
-            };
-          }
-          return msg;
-        })
-      );
-    };
+      setMessages((prev) => {
+        const lastIndex = prev.length - 1;
+        const lastMessage = prev[lastIndex];
 
-    // Handle thinking start
-    const handleThinkingStart = () => {
-      const thinkingMessageId = `thinking-${Date.now()}`;
-      setStreamingMessageId(thinkingMessageId);
+        // If the last message is from assistant, append to it
+        if (lastMessage?.from === 'assistant' && lastMessage.type !== 'thinking') {
+          const currentContent = lastMessage.versions[0]?.content || '';
+          const updatedMessage = {
+            ...lastMessage,
+            versions: [
+              {
+                ...lastMessage.versions[0],
+                content: currentContent + (data.chunk || '')
+              }
+            ]
+          };
+          return [...prev.slice(0, lastIndex), updatedMessage];
+        }
 
-      const thinkingMessage: MessageType = {
-        key: thinkingMessageId,
-        from: 'assistant',
-        type: 'thinking',
-        versions: [
-          {
-            id: thinkingMessageId,
-            content: 'Thinking...'
-          }
-        ],
-        avatar: 'https://github.com/openai.png',
-        name: 'Assistant'
-      };
+        // If no assistant message yet, create a new one
+        const newAssistantMessage: MessageType = {
+          key: `assistant-${Date.now()}`,
+          from: 'assistant',
+          versions: [
+            {
+              id: `assistant-${Date.now()}`,
+              content: data.chunk || ''
+            }
+          ],
+          avatar: 'https://github.com/openai.png',
+          name: 'Assistant'
+        };
 
-      setMessages((prev) => [...prev, thinkingMessage]);
-    };
-
-    // Handle thinking end
-    const handleThinkingEnd = () => {
-      setMessages((prev) => prev.filter((msg) => msg.type !== 'thinking'));
-    };
-
-    // Handle generation complete
-    const handleGenerationComplete = () => {
-      setStatus('ready');
-      setStreamingMessageId(null);
-      streamingContentRef.current = '';
+        return [...prev, newAssistantMessage];
+      });
+      
+      // Set status to streaming while receiving chunks
+      setStatus('streaming');
+      
+      // Clear any existing timeout
+      if (streamingTimeoutRef.current) {
+        clearTimeout(streamingTimeoutRef.current);
+      }
+      
+      // Set a timeout to mark as complete if no more chunks arrive
+      streamingTimeoutRef.current = setTimeout(() => {
+        setStatus('ready');
+      }, 2000); // Wait 2 seconds after last chunk
     };
 
     // Handle errors
@@ -221,11 +223,11 @@ const Example = () => {
         description: error.message || 'An error occurred'
       });
       setStatus('error');
-      setMessages((prev) => prev.filter((msg) => msg.type !== 'thinking'));
     };
 
     // Handle reconnection
     const handleReconnect = async () => {
+      console.log('Socket reconnected, rejoining room');
       try {
         await llmChatService.joinRoom({ chat_id: chatId });
         toast.info('Reconnected', {
@@ -236,22 +238,23 @@ const Example = () => {
       }
     };
 
-    // Register listeners
+    // Register listeners - only the ones we need
     llmChatService.onChunk(handleChunk);
-    llmChatService.onThinkingStart(handleThinkingStart);
-    llmChatService.onThinkingEnd(handleThinkingEnd);
-    llmChatService.onGenerationComplete(handleGenerationComplete);
     llmChatService.onError(handleError);
     llmChatService.onReconnect(handleReconnect);
 
     return () => {
+      if (streamingTimeoutRef.current) {
+        clearTimeout(streamingTimeoutRef.current);
+      }
       llmChatService.removeAllListeners();
     };
-  }, [isInitialized, chatId, streamingMessageId]);
+  }, [isInitialized, chatId]);
 
   const sendMessage = useCallback(
     async (content: string, attachments?: string[]) => {
       if (!isInitialized || !chatId) {
+        console.warn('Chat not ready:', { isInitialized, chatId });
         toast.error('Chat not ready', {
           description: 'Please wait for chat to initialize'
         });
@@ -269,39 +272,23 @@ const Example = () => {
               content
             }
           ],
-          avatar: 'https://github.com/haydenbleasel.png',
-          name: 'User'
+          avatar: user?.imageUrl || '',
+          name: user?.username || 'User',
         };
 
         setMessages((prev) => [...prev, userMessage]);
+        setStatus('submitted');
 
-        // Send message via socket
+        console.log('Sending message via socket:', { conversation_id: chatId, content });
+        
+        // Send message via socket - the AI response will come through ai_chunk events
         await llmChatService.sendMessage({
           conversation_id: chatId,
           content,
           attachments: attachments || []
         });
 
-        // Prepare for AI response
-        const assistantMessageId = `assistant-${Date.now()}`;
-        setStreamingMessageId(assistantMessageId);
-        streamingContentRef.current = '';
-
-        const assistantMessage: MessageType = {
-          key: assistantMessageId,
-          from: 'assistant',
-          versions: [
-            {
-              id: assistantMessageId,
-              content: ''
-            }
-          ],
-          avatar: 'https://github.com/openai.png',
-          name: 'Assistant'
-        };
-
-        setMessages((prev) => [...prev, assistantMessage]);
-        setStatus('streaming');
+        console.log('Message sent successfully, waiting for ai_chunk events');
       } catch (error) {
         console.error('Failed to send message:', error);
         toast.error('Send failed', {
@@ -446,7 +433,7 @@ const Example = () => {
                 </PromptInputModelSelect>
               </PromptInputTools>
               <PromptInputSubmit
-                disabled={!isInitialized || !(text.trim() || status) || status === 'streaming'}
+                disabled={!isInitialized || !text.trim() || status === 'streaming'}
                 status={status}
               />
             </PromptInputFooter>

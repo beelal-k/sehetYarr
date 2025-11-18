@@ -82,25 +82,20 @@ class LLMChatService {
   async joinRoom(params: JoinRoomParams): Promise<void> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error("Join room timeout"));
+        reject(new Error("Join room timeout - server did not acknowledge room join"));
       }, 10000);
 
       // Emit join_room event with only chat_id
       socket.emit(events.JOIN_ROOM, { chat_id: params.chat_id }, (response: any) => {
         clearTimeout(timeout);
         if (response?.error) {
+          console.error(`Failed to join room ${params.chat_id}:`, response.error);
           reject(new Error(response.error));
         } else {
-          console.log(`Joined room: ${params.chat_id}`);
+          console.log(`Successfully joined room: ${params.chat_id}`, response);
           resolve();
         }
       });
-
-      // Fallback resolve if no acknowledgment
-      setTimeout(() => {
-        clearTimeout(timeout);
-        resolve();
-      }, 2000);
     });
   }
 
@@ -111,12 +106,13 @@ class LLMChatService {
   async sendMessage(message: UserMessageParams): Promise<void> {
     return new Promise((resolve, reject) => {
       const userMessage = {
-        conversation_id: message.conversation_id,
         role: message.role || "user",
         category: message.category || "chat",
-        content: message.content,
         attachments: message.attachments || [],
         ...message,
+        // Ensure core fields override defaults
+        conversation_id: message.conversation_id,
+        content: message.content,
       };
 
       socket.emit(events.USER_MESSAGE, userMessage, (response: any) => {
@@ -138,7 +134,7 @@ class LLMChatService {
    * @param callback - Function to handle each chunk
    */
   onChunk(callback: (data: { chunk: string; [key: string]: any }) => void): void {
-    socket.on(events.PATHAI_CHUNK, callback);
+    socket.on(events.AI_CHUNK, callback);
   }
 
   /**
@@ -227,7 +223,7 @@ class LLMChatService {
    * Call this when unmounting components to prevent memory leaks
    */
   removeAllListeners(): void {
-    socket.off(events.PATHAI_CHUNK);
+    socket.off(events.AI_CHUNK);
     socket.off(events.GENERATION_COMPLETE);
     socket.off(events.THINKING_START);
     socket.off(events.THINKING_END);
@@ -272,6 +268,7 @@ class LLMChatService {
       }
 
       // Join the chat room
+      console.log("Joining room");
       await this.joinRoom({ chat_id: chatId });
 
       console.log(`Chat initialized for session: ${chatId}`);

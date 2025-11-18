@@ -5,7 +5,7 @@ export const events = {
   DISCONNECT: "disconnect",
   JOIN_ROOM: "join_room",
   USER_MESSAGE: "user_message",
-  PATHAI_CHUNK: "pathai_chunk",
+  AI_CHUNK: "ai_chunk",
   GENERATION_COMPLETE: "generation_complete",
   THINKING_START: "thinking_start",
   THINKING_END: "thinking_end",
