@@ -3,8 +3,9 @@ import { Schema, model, models } from 'mongoose';
 // Define enum directly in the model file to avoid import issues
 export enum UserRole {
   ADMIN = 'admin',
-  TEACHER = 'teacher',
-  STUDENT = 'student'
+  DOCTOR = 'doctor',
+  WORKER = 'worker',
+  PATIENT = 'patient'
 }
 
 const ProfileSchema = new Schema(
@@ -33,11 +34,11 @@ const LocationSchema = new Schema(
 const UserSchema = new Schema(
   {
     clerkId: { type: String, required: true, unique: true },
-    email: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
     role: {
       type: String,
-      enum: Object.values(UserRole),
-      default: UserRole.STUDENT
+      enum: ['admin', 'doctor', 'worker', 'patient'],
+      default: UserRole.PATIENT
     },
     name: String,
     profile: ProfileSchema,

@@ -125,6 +125,7 @@ export enum Priority {
 
 export enum Role {
   ADMIN = 'admin',
-  TEACHER = 'teacher',
-  STUDENT = 'student'
+  DOCTOR = 'doctor',
+  WORKER = 'worker',
+  PATIENT = 'patient'
 }

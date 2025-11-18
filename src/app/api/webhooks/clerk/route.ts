@@ -2,8 +2,7 @@ import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { clerkClient } from '@clerk/nextjs/server';
-import { UserModel } from '@/lib/models/user.model';
-import { Role } from '@/lib/enums';
+import { UserModel, UserRole } from '@/lib/models/user.model';
 import { connectDB } from '@/lib/db/connect';
 import { logger } from '@/lib/utils/logger';
 
@@ -34,6 +33,7 @@ type ClerkWebhookEvent = {
     last_sign_in_at: number | null;
     birthday: string | null;
     gender: string | null;
+    user_id?: string;
   };
 };
 
@@ -115,7 +115,11 @@ export async function POST(req: NextRequest) {
         break;
       case 'session.created':
         logger.info('Handling session.created event for:', data.id);
-        await handleSessionCreated(data);
+        if (!data.user_id) {
+          logger.error('Session created event missing user_id');
+          return new NextResponse('Error: Missing user_id', { status: 400 });
+        }
+        await handleSessionCreated(data as ClerkWebhookEvent['data'] & { user_id: string });
         break;
       default:
         logger.info(`Unhandled webhook type: ${type}`);
@@ -141,21 +145,24 @@ async function handleUserCreated(data: ClerkWebhookEvent['data']) {
   if (!data.email_addresses || data.email_addresses.length === 0) {
     logger.info('Email addresses missing from webhook, fetching from Clerk API');
     try {
+      // clerkClient may be a factory returning an API client in this setup
       const client = await clerkClient();
       const clerkUser = await client.users.getUser(data.id);
       userData = {
         ...data,
-        email_addresses: clerkUser.emailAddresses.map(email => ({
+        email_addresses: clerkUser.emailAddresses.map((email: any) => ({
           email_address: email.emailAddress,
           verification: { status: email.verification?.status || 'unverified' }
         })),
-        phone_numbers: clerkUser.phoneNumbers?.map(phone => ({
-          phone_number: phone.phoneNumber,
-          verification: { status: phone.verification?.status || 'unverified' }
-        })) || [],
+        phone_numbers:
+          clerkUser.phoneNumbers?.map((phone: any) => ({
+            phone_number: phone.phoneNumber,
+            verification: { status: phone.verification?.status || 'unverified' }
+          })) || [],
         image_url: clerkUser.imageUrl,
         first_name: clerkUser.firstName,
-        last_name: clerkUser.lastName
+        last_name: clerkUser.lastName,
+        last_sign_in_at: clerkUser.lastSignInAt
       };
       logger.info('Fetched user data from Clerk API successfully');
     } catch (error) {
@@ -184,19 +191,59 @@ async function handleUserCreated(data: ClerkWebhookEvent['data']) {
   logger.info('Creating user with email:', primaryEmail.email_address);
 
   try {
-    // Check if user already exists
-    const existingUser = await UserModel.findOne({ clerkId: userData.id });
-    
+    // Try to find an existing user by clerkId first, then by email to avoid duplicates
+    let existingUser = await UserModel.findOne({ clerkId: userData.id });
+
+    if (!existingUser) {
+      existingUser = await UserModel.findOne({ email: primaryEmail.email_address });
+    }
+
     if (existingUser) {
-      logger.info('User already exists, updating instead:', userData.id);
-      await handleUserUpdated(userData);
+      // If user exists but doesn't have a clerkId, attach it
+      if (!existingUser.clerkId) {
+        existingUser.clerkId = userData.id;
+      }
+
+      logger.info('User exists, updating record with Clerk data:', userData.id);
+
+      await UserModel.findOneAndUpdate(
+        { _id: existingUser._id },
+        {
+          clerkId: userData.id,
+          email: primaryEmail.email_address,
+          name: fullName || undefined,
+          profile: {
+            firstName: userData.first_name || undefined,
+            lastName: userData.last_name || undefined,
+            fullName: fullName || undefined,
+            imageUrl: userData.image_url || undefined,
+            phoneNumber: primaryPhone?.phone_number || undefined,
+            birthday: userData.birthday || undefined,
+            gender: userData.gender || undefined
+          },
+          lastSignInAt: userData.last_sign_in_at
+            ? new Date(userData.last_sign_in_at)
+            : undefined,
+          emailVerified: primaryEmail.verification.status === 'verified',
+          phoneVerified: primaryPhone?.verification.status === 'verified' || false,
+          isActive: true,
+          updatedAt: new Date()
+        },
+        { new: true }
+      );
+
+      logger.info('User merged/updated successfully for:', userData.id);
+      
+      // Sync role to Clerk metadata
+      await syncClerkMetadata(userData.id, existingUser.role || UserRole.PATIENT);
       return;
     }
 
+    // Create a fresh user when none exists
     const newUser = await UserModel.create({
       clerkId: userData.id,
       email: primaryEmail.email_address,
-      role: Role.STUDENT, // Default role
+      role: UserRole.PATIENT, // Default role
       name: fullName || undefined,
       profile: {
         firstName: userData.first_name || undefined,
@@ -220,14 +267,23 @@ async function handleUserCreated(data: ClerkWebhookEvent['data']) {
       email: newUser.email,
       _id: newUser._id
     });
+
+    // Sync role to Clerk metadata
+    await syncClerkMetadata(newUser.clerkId, newUser.role);
+
   } catch (error: any) {
-    // Handle duplicate key error
+    // Handle duplicate key error - try to update instead of failing
     if (error.code === 11000) {
-      logger.warn('Duplicate user detected, updating instead:', userData.id);
-      await handleUserUpdated(userData);
-      return;
+      logger.warn('Duplicate user detected (11000), attempting update instead:', userData.id);
+      try {
+        await handleUserUpdated(userData);
+        return;
+      } catch (err) {
+        logger.error('Failed to recover from duplicate key error:', err);
+        throw err;
+      }
     }
-    logger.error('Error creating user:', error);
+    logger.error('Error creating/updating user:', error);
     throw error;
   }
 }
@@ -302,31 +358,46 @@ async function handleUserDeleted(data: ClerkWebhookEvent['data']) {
   }
 }
 
-async function handleSessionCreated(data: ClerkWebhookEvent['data']) {
-  logger.info('handleSessionCreated called for user:', data.id);
+async function handleSessionCreated(data: ClerkWebhookEvent['data'] & { user_id: string }) {
+  const userId = data.user_id;
+  logger.info('handleSessionCreated called for user:', userId);
 
   try {
     // Check if user exists in database
-    const existingUser = await UserModel.findOne({ clerkId: data.id });
+    const existingUser = await UserModel.findOne({ clerkId: userId });
 
     if (existingUser) {
       // Update last sign-in time
       await UserModel.findOneAndUpdate(
-        { clerkId: data.id },
+        { clerkId: userId },
         { 
           lastSignInAt: data.last_sign_in_at ? new Date(data.last_sign_in_at) : new Date(),
           updatedAt: new Date() 
         },
         { new: true }
       );
-      logger.info('User last sign-in updated:', data.id);
+      logger.info('User last sign-in updated:', userId);
     } else {
       // User doesn't exist, create them (handles OAuth sign-ins)
-      logger.info('User not found during session creation, creating user:', data.id);
-      await handleUserCreated(data);
+      logger.info('User not found during session creation, creating user:', userId);
+      // We need to fetch the user data because session data doesn't have user details
+      // Pass the userId as the id in the data object
+      await handleUserCreated({ ...data, id: userId });
     }
   } catch (error) {
     logger.error('Error handling session creation:', error);
     throw error;
+  }
+}
+
+async function syncClerkMetadata(clerkId: string, role: string) {
+  try {
+    const client = await clerkClient();
+    await client.users.updateUserMetadata(clerkId, {
+      publicMetadata: { role }
+    });
+    logger.info('Synced role to Clerk metadata:', { clerkId, role });
+  } catch (error) {
+    logger.error('Failed to sync role to Clerk metadata:', error);
   }
 }
