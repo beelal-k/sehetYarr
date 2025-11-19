@@ -173,10 +173,16 @@ export async function POST(req: NextRequest) {
       const user = await UserModel.findOne({ clerkId: userId });
       if (user) {
         userRole = user.role;
+        logger.info(`User role: ${user.role}, User ID: ${user._id}`);
+        
         if (user.role === UserRole.HOSPITAL) {
           const hospital = await HospitalModel.findOne({ userId: user._id });
+          logger.info(`Hospital lookup result:`, hospital ? `Found ID: ${hospital._id}` : 'Not found');
+          
           if (hospital) {
             hospitalId = hospital._id;
+          } else {
+            logger.error(`Hospital profile not found for user ${user._id}`);
           }
         }
       }
@@ -215,10 +221,16 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // If not a hospital or hospital profile missing
+      const errorDetails = userRole === UserRole.HOSPITAL 
+        ? 'Hospital profile not found. Please complete your hospital registration.'
+        : 'Patient already exists in the system.';
+      
       return NextResponse.json(
         { 
           success: false, 
-          error: `Patient already exists. (User Role: ${userRole || 'Unknown'}, Action: Link failed)`,
+          error: errorDetails,
+          userRole: userRole,
           data: existingPatient 
         },
         { status: 409 }
