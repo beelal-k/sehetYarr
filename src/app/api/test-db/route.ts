@@ -47,7 +47,7 @@ export async function POST() {
     const testUser = await UserModel.create({
       clerkId: `test_${Date.now()}`,
       email: `test${Date.now()}@example.com`,
-      role: Role.STUDENT,
+      role: Role.PATIENT,
       name: 'Test User',
       profile: {
         firstName: 'Test',

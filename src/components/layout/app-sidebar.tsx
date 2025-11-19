@@ -47,6 +47,41 @@ import { usePathname, useRouter } from 'next/navigation';
 import * as React from 'react';
 import { Icons } from '../icons';
 import { OrgSwitcher } from '../org-switcher';
+
+const roleAccessMap: Record<string, string[]> = {
+  admin: ['*'],
+  doctor: [
+    '/dashboard/overview',
+    '/dashboard/appointments',
+    '/dashboard/patients',
+    '/dashboard/medical-records',
+    '/dashboard/chat',
+    '/dashboard/hospitals',
+    '/dashboard/doctors'
+  ],
+  worker: [
+    '/dashboard/overview',
+    '/dashboard/appointments',
+    '/dashboard/patients',
+    '/dashboard/bills',
+    '/dashboard/capacity',
+    '/dashboard/facilities',
+    '/dashboard/hospitals',
+    '/dashboard/doctors',
+    '/dashboard/kanban'
+  ],
+  patient: [
+    '/dashboard/overview',
+    '/dashboard/appointments',
+    '/dashboard/medical-records',
+    '/dashboard/bills',
+    '/dashboard/chat',
+    '/dashboard/doctors',
+    '/dashboard/hospitals',
+    '/dashboard/product'
+  ]
+};
+
 export const company = {
   name: 'Acme Inc',
   logo: IconPhotoUp,
@@ -62,7 +97,7 @@ const tenants = [
 export default function AppSidebar() {
   const pathname = usePathname();
   const { isOpen } = useMediaQuery();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const router = useRouter();
   const handleSwitchTenant = (_tenantId: string) => {
     // Tenant switching functionality would be implemented here
@@ -74,6 +109,18 @@ export default function AppSidebar() {
   React.useEffect(() => {
     // Side effects based on sidebar state changes
   }, [isOpen]);
+
+  // Filter nav items based on user role
+  const filteredNavItems = React.useMemo(() => {
+    if (!isLoaded || !user) return [];
+    
+    const role = (user.publicMetadata?.role as string) || 'patient';
+    const allowedRoutes = roleAccessMap[role] || roleAccessMap.patient;
+
+    if (allowedRoutes[0] === '*') return navItems;
+
+    return navItems.filter((item) => allowedRoutes.includes(item.url));
+  }, [isLoaded, user]);
 
   return (
     <Sidebar collapsible='icon'>
@@ -88,7 +135,7 @@ export default function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Overview</SidebarGroupLabel>
           <SidebarMenu>
-            {navItems.map((item) => {
+            {filteredNavItems.map((item) => {
               const Icon = item.icon ? Icons[item.icon] : Icons.logo;
               return item?.items && item?.items?.length > 0 ? (
                 <Collapsible
@@ -188,14 +235,6 @@ export default function AppSidebar() {
                   >
                     <IconUserCircle className='mr-2 h-4 w-4' />
                     Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <IconCreditCard className='mr-2 h-4 w-4' />
-                    Billing
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <IconBell className='mr-2 h-4 w-4' />
-                    Notifications
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />

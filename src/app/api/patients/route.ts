@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     // Validate required fields
-    const { name, gender, dateOfBirth, cnic, cnicIV } = body;
+    const { name, gender, dateOfBirth, cnic, cnicIV, email, userId } = body;
 
     if (!name || !gender || !dateOfBirth || !cnic || !cnicIV) {
       return NextResponse.json(

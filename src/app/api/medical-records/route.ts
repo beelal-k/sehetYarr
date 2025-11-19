@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db/connect';
 import { MedicalRecordModel } from '@/lib/models/medical-record.model';
+import { UserModel, UserRole } from '@/lib/models/user.model';
+import { PatientModel } from '@/lib/models/patient.model';
 import { logger } from '@/lib/utils/logger';
 import { isValidObjectId } from 'mongoose';
+import { auth } from '@clerk/nextjs/server';
 
 // GET - Get all medical records or search
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
+    const { userId } = await auth();
 
     const { searchParams } = new URL(req.url);
     const patientId = searchParams.get('patientId');
@@ -18,7 +22,46 @@ export async function GET(req: NextRequest) {
 
     const query: any = {};
 
+    // Role-based access control
+    if (userId) {
+      const user = await UserModel.findOne({ clerkId: userId });
+      
+      if (user) {
+        if (user.role === UserRole.PATIENT) {
+          // Find the patient record associated with this user
+          // Try to find by userId first, then by email
+          const patient = await PatientModel.findOne({
+            $or: [
+              { userId: user._id },
+              { email: user.email }
+            ]
+          });
+
+          if (patient) {
+            query.patientId = patient._id;
+          } else {
+            // If user is a patient but has no patient record, they shouldn't see any medical records
+            return NextResponse.json({
+              success: true,
+              data: [],
+              pagination: { page, limit, total: 0, pages: 0 }
+            });
+          }
+        }
+        // Doctors and Admins can see all records (filtered by params)
+        // Workers might also need access
+      }
+    }
+
     if (patientId && isValidObjectId(patientId)) {
+      // If query param is provided, ensure it matches the enforced patientId (if any)
+      if (query.patientId && query.patientId.toString() !== patientId) {
+         // Trying to access someone else's records
+         return NextResponse.json(
+          { success: false, error: 'Unauthorized access to medical records' },
+          { status: 403 }
+        );
+      }
       query.patientId = patientId;
     }
 

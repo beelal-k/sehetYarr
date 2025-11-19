@@ -31,11 +31,6 @@ import {
   PromptInputFooter,
   PromptInputHeader,
   type PromptInputMessage,
-  PromptInputModelSelect,
-  PromptInputModelSelectContent,
-  PromptInputModelSelectItem,
-  PromptInputModelSelectTrigger,
-  PromptInputModelSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools
@@ -53,7 +48,7 @@ import {
   SourcesTrigger
 } from '@/components/ai-elements/sources';
 import type { ToolUIPart } from 'ai';
-import { GlobeIcon, MicIcon } from 'lucide-react';
+import { MicIcon } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
@@ -87,28 +82,7 @@ type MessageType = {
 
 const initialMessages: MessageType[] = [];
 
-const models = [
-  { id: 'gpt-4', name: 'GPT-4' },
-  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
-  { id: 'claude-2', name: 'Claude 2' },
-  { id: 'claude-instant', name: 'Claude Instant' },
-  { id: 'palm-2', name: 'PaLM 2' },
-  { id: 'llama-2-70b', name: 'Llama 2 70B' },
-  { id: 'llama-2-13b', name: 'Llama 2 13B' },
-  { id: 'cohere-command', name: 'Command' },
-  { id: 'mistral-7b', name: 'Mistral 7B' }
-];
-
-const mockResponses = [
-  "That's a great question! Let me help you understand this concept better. The key thing to remember is that proper implementation requires careful consideration of the underlying principles and best practices in the field.",
-  "I'd be happy to explain this topic in detail. From my understanding, there are several important factors to consider when approaching this problem. Let me break it down step by step for you.",
-  "This is an interesting topic that comes up frequently. The solution typically involves understanding the core concepts and applying them in the right context. Here's what I recommend...",
-  "Great choice of topic! This is something that many developers encounter. The approach I'd suggest is to start with the fundamentals and then build up to more complex scenarios.",
-  "That's definitely worth exploring. From what I can see, the best way to handle this is to consider both the theoretical aspects and practical implementation details."
-];
-
 const Example = () => {
-  const [model, setModel] = useState<string>(models[0].id);
   const [text, setText] = useState<string>('');
   const {user} = useUser();
   const [useWebSearch, setUseWebSearch] = useState<boolean>(false);
@@ -409,28 +383,13 @@ const Example = () => {
                   <MicIcon size={16} />
                   <span className='sr-only'>Microphone</span>
                 </PromptInputButton>
-                <PromptInputButton
+                {/* <PromptInputButton
                   onClick={() => setUseWebSearch(!useWebSearch)}
                   variant={useWebSearch ? 'default' : 'ghost'}
                 >
                   <GlobeIcon size={16} />
                   <span>Search</span>
-                </PromptInputButton>
-                <PromptInputModelSelect onValueChange={setModel} value={model}>
-                  <PromptInputModelSelectTrigger>
-                    <PromptInputModelSelectValue />
-                  </PromptInputModelSelectTrigger>
-                  <PromptInputModelSelectContent>
-                    {models.map((model) => (
-                      <PromptInputModelSelectItem
-                        key={model.id}
-                        value={model.id}
-                      >
-                        {model.name}
-                      </PromptInputModelSelectItem>
-                    ))}
-                  </PromptInputModelSelectContent>
-                </PromptInputModelSelect>
+                </PromptInputButton> */}
               </PromptInputTools>
               <PromptInputSubmit
                 disabled={!isInitialized || !text.trim() || status === 'streaming'}

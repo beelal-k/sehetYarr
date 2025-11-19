@@ -41,7 +41,6 @@ const DoctorSchema = new Schema(
     qualifications: [String],
     licenseNumber: { type: String, required: true },
     contact: DoctorContactSchema,
-    hospitalIds: [{ type: Schema.Types.ObjectId, ref: 'Hospital' }],
     availability: AvailabilitySchema
   },
   { timestamps: true }

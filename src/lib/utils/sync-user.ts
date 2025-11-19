@@ -38,7 +38,7 @@ export async function syncUserToMongoDB() {
       user = await UserModel.create({
         clerkId: clerkUser.id,
         email: primaryEmail.emailAddress,
-        role: Role.STUDENT, // Default role
+        role: Role.PATIENT, // Default role
         name: fullName || undefined,
         profile: {
           firstName: clerkUser.firstName || undefined,

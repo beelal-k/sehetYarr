@@ -32,6 +32,8 @@ const MedicalHistoryItemSchema = new Schema(
 
 const PatientSchema = new Schema(
   {
+    userId: { type: Schema.Types.ObjectId, ref: 'User' }, // Link to User model
+    email: { type: String }, // Link via email
     name: { type: String, required: true },
     gender: { type: String, required: true, enum: Object.values(Gender) },
     dateOfBirth: { type: Date, required: true },
