@@ -5,7 +5,9 @@ export enum UserRole {
   ADMIN = 'admin',
   DOCTOR = 'doctor',
   WORKER = 'worker',
-  PATIENT = 'patient'
+  PATIENT = 'patient',
+  HOSPITAL = 'hospital',
+  GUEST = 'guest'
 }
 
 const ProfileSchema = new Schema(
@@ -37,8 +39,8 @@ const UserSchema = new Schema(
     email: { type: String, required: true, unique: true },
     role: {
       type: String,
-      enum: ['admin', 'doctor', 'worker', 'patient'],
-      default: UserRole.PATIENT
+      enum: ['admin', 'doctor', 'worker', 'patient', 'hospital', 'guest'],
+      default: UserRole.GUEST
     },
     name: String,
     profile: ProfileSchema,

@@ -3,14 +3,22 @@ import { connectDB } from '@/lib/db/connect';
 import { PatientModel } from '@/lib/models/patient.model';
 import { Gender, BloodGroup } from '@/lib/enums';
 import { logger } from '@/lib/utils/logger';
+import { auth } from '@clerk/nextjs/server';
+import { UserModel, UserRole } from '@/lib/models/user.model';
+import { HospitalModel } from '@/lib/models/hospital.model';
+import { AppointmentModel } from '@/lib/models/appointment.model';
+import { DoctorModel } from '@/lib/models/doctor.model';
+import { PatientHospitalModel } from '@/lib/models/patient-hospital.model';
 
 // GET - Get all patients or search
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
+    const { userId } = await auth();
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search');
+    const lookup = searchParams.get('lookup') === 'true';
     const gender = searchParams.get('gender');
     const bloodGroup = searchParams.get('bloodGroup');
     const page = parseInt(searchParams.get('page') || '1');
@@ -18,10 +26,48 @@ export async function GET(req: NextRequest) {
 
     const query: any = {};
 
+    // Role-based filtering
+    if (userId) {
+      const user = await UserModel.findOne({ clerkId: userId });
+      if (user) {
+        if (user.role === UserRole.HOSPITAL) {
+          // If lookup is true, we allow searching globally (to find patients to add)
+          // Otherwise, we only show patients linked to this hospital
+          if (!lookup) {
+            const hospital = await HospitalModel.findOne({ userId: user._id });
+            if (hospital) {
+              // Find patients linked to this hospital
+              const linkedPatients = await PatientHospitalModel.find({ hospitalId: hospital._id }).distinct('patientId');
+              query._id = { $in: linkedPatients };
+            } else {
+              // If hospital profile is missing, show no patients
+              query._id = { $in: [] };
+            }
+          }
+        } else if (user.role === UserRole.DOCTOR) {
+          if (!lookup) {
+            const doctor = await DoctorModel.findOne({ userId: user._id });
+            if (doctor) {
+               // Find patients who have appointments with this doctor
+               const appointments = await AppointmentModel.find({ doctorId: doctor._id }).distinct('patientId');
+               query._id = { $in: appointments };
+            } else {
+              // If doctor profile is missing, show no patients
+              query._id = { $in: [] };
+            }
+          }
+        } else if (user.role === UserRole.PATIENT) {
+          // Patients can only see their own profile
+          query.clerkId = userId;
+        }
+      }
+    }
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
-        { cnic: { $regex: search, $options: 'i' } }
+        { cnic: { $regex: search, $options: 'i' } },
+        { 'contact.primaryNumber': { $regex: search, $options: 'i' } }
       ];
     }
 
@@ -63,11 +109,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
+    const { userId } = await auth();
 
     const body = await req.json();
 
     // Validate required fields
-    const { name, gender, dateOfBirth, cnic, cnicIV, email, userId } = body;
+    const { name, gender, dateOfBirth, cnic, cnicIV } = body;
 
     if (!name || !gender || !dateOfBirth || !cnic || !cnicIV) {
       return NextResponse.json(
@@ -110,7 +157,83 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check for existing patient with same CNIC or Phone
+    const existingPatient = await PatientModel.findOne({
+      $or: [
+        { cnic: cnic },
+        { 'contact.primaryNumber': body.contact?.primaryNumber }
+      ]
+    });
+
+    // Determine if the creator is a hospital
+    let hospitalId = null;
+    let userRole = null;
+
+    if (userId) {
+      const user = await UserModel.findOne({ clerkId: userId });
+      if (user) {
+        userRole = user.role;
+        if (user.role === UserRole.HOSPITAL) {
+          const hospital = await HospitalModel.findOne({ userId: user._id });
+          if (hospital) {
+            hospitalId = hospital._id;
+          }
+        }
+      }
+    }
+
+    if (existingPatient) {
+      // If hospital, link the patient instead of error
+      if (hospitalId) {
+        const existingLink = await PatientHospitalModel.findOne({
+          patientId: existingPatient._id,
+          hospitalId: hospitalId
+        });
+
+        if (!existingLink) {
+          await PatientHospitalModel.create({
+            patientId: existingPatient._id,
+            hospitalId: hospitalId
+          });
+          return NextResponse.json(
+            { 
+              success: true, 
+              message: 'Patient already exists and has been linked to your hospital',
+              data: existingPatient 
+            },
+            { status: 200 }
+          );
+        } else {
+           return NextResponse.json(
+            { 
+              success: true, 
+              message: 'Patient is already linked to your hospital',
+              data: existingPatient 
+            },
+            { status: 200 }
+          );
+        }
+      }
+
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Patient already exists. (User Role: ${userRole || 'Unknown'}, Action: Link failed)`,
+          data: existingPatient 
+        },
+        { status: 409 }
+      );
+    }
+
     const patient = await PatientModel.create(body);
+
+    // If created by hospital, create link
+    if (hospitalId) {
+      await PatientHospitalModel.create({
+        patientId: patient._id,
+        hospitalId: hospitalId
+      });
+    }
 
     logger.info('Patient created:', patient._id);
 

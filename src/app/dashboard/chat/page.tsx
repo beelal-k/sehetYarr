@@ -279,147 +279,138 @@ const Example = () => {
         setStatus("error");
       }
     },
-    [isInitialized, chatId]
+    [isInitialized, chatId, user]
   );
 
   const handleSubmit = async (message: PromptInputMessage) => {
-    const handleSubmit = async (message: PromptInputMessage) => {
-      const hasText = Boolean(message.text);
-      const hasAttachments = Boolean(message.files?.length);
+    const hasText = Boolean(message.text);
+    const hasAttachments = Boolean(message.files?.length);
 
-      if (!(hasText || hasAttachments)) {
-        return;
-      }
+    if (!(hasText || hasAttachments)) {
+      return;
+    }
 
-      setStatus("submitted");
+    setStatus("submitted");
 
-      // Handle file attachments (placeholder - implement file upload if needed)
-      let attachmentUrls: string[] = [];
-      if (message.files?.length) {
-        toast.info("Files attached", {
-          description: `${message.files.length} file(s) will be processed`,
-        });
-        // TODO: Upload files to storage and get URLs
-        // For now, just use file URLs/names as placeholders
-        attachmentUrls = message.files.map((f) => f.url || "attachment");
-      }
+    // Handle file attachments (placeholder - implement file upload if needed)
+    let attachmentUrls: string[] = [];
+    if (message.files?.length) {
+      toast.info("Files attached", {
+        description: `${message.files.length} file(s) will be processed`,
+      });
+      // TODO: Upload files to storage and get URLs
+      // For now, just use file URLs/names as placeholders
+      attachmentUrls = message.files.map((f) => f.url || "attachment");
+    }
 
-      await sendMessage(
-        message.text || "Sent with attachments",
-        attachmentUrls
-      );
-      await sendMessage(
-        message.text || "Sent with attachments",
-        attachmentUrls
-      );
-      setText("");
-    };
+    await sendMessage(message.text || "Sent with attachments", attachmentUrls);
+    setText("");
+  };
 
-    return (
-      <div className='relative flex size-full h-[91vh] flex-col divide-y overflow-hidden'>
-        <Conversation>
-          <ConversationContent>
-            {messages.map(({ versions, ...message }) => (
-              <Branch defaultBranch={0} key={message.key}>
-                <BranchMessages>
-                  {versions.map((version) => (
-                    <Message
-                      from={message.from}
-                      key={`${message.key}-${version.id}`}
-                    >
-                      <div>
-                        {message.sources?.length && (
-                          <Sources>
-                            <SourcesTrigger count={message.sources.length} />
-                            <SourcesContent>
-                              {message.sources.map((source) => (
-                                <Source
-                                  href={source.href}
-                                  key={source.href}
-                                  title={source.title}
-                                />
-                              ))}
-                            </SourcesContent>
-                          </Sources>
-                        )}
-                        {message.reasoning && (
-                          <Reasoning duration={message.reasoning.duration}>
-                            <ReasoningTrigger />
-                            <ReasoningContent>
-                              {message.reasoning.content}
-                            </ReasoningContent>
-                          </Reasoning>
-                        )}
-                        <MessageContent>
-                          <Response>{version.content}</Response>
-                        </MessageContent>
-                      </div>
-                      <MessageAvatar name={message.name} src={message.avatar} />
-                    </Message>
-                  ))}
-                </BranchMessages>
-                {versions.length > 1 && (
-                  <BranchSelector from={message.from}>
-                    <BranchPrevious />
-                    <BranchPage />
-                    <BranchNext />
-                  </BranchSelector>
-                )}
-              </Branch>
-            ))}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
-        <div className='grid shrink-0 gap-4 pt-4'>
-          <div className='w-full px-4 pb-4'>
-            <PromptInput globalDrop multiple onSubmit={handleSubmit}>
-              <PromptInputHeader>
-                <PromptInputAttachments>
-                  {(attachment) => <PromptInputAttachment data={attachment} />}
-                </PromptInputAttachments>
-              </PromptInputHeader>
-              <PromptInputBody>
-                <PromptInputTextarea
-                  onChange={(event) => setText(event.target.value)}
-                  value={text}
-                />
-              </PromptInputBody>
-              <PromptInputFooter className='py-1'>
-                <PromptInputTools>
-                  <PromptInputActionMenu>
-                    <PromptInputActionMenuTrigger />
-                    <PromptInputActionMenuContent>
-                      <PromptInputActionAddAttachments />
-                    </PromptInputActionMenuContent>
-                  </PromptInputActionMenu>
-                  <PromptInputButton
-                    onClick={() => setUseMicrophone(!useMicrophone)}
-                    variant={useMicrophone ? "default" : "ghost"}
+  return (
+    <div className='relative flex size-full h-[91vh] flex-col divide-y overflow-hidden'>
+      <Conversation>
+        <ConversationContent>
+          {messages.map(({ versions, ...message }) => (
+            <Branch defaultBranch={0} key={message.key}>
+              <BranchMessages>
+                {versions.map((version) => (
+                  <Message
+                    from={message.from}
+                    key={`${message.key}-${version.id}`}
                   >
-                    <MicIcon size={16} />
-                    <span className='sr-only'>Microphone</span>
-                  </PromptInputButton>
-                  {/* <PromptInputButton
+                    <div>
+                      {message.sources?.length && (
+                        <Sources>
+                          <SourcesTrigger count={message.sources.length} />
+                          <SourcesContent>
+                            {message.sources.map((source) => (
+                              <Source
+                                href={source.href}
+                                key={source.href}
+                                title={source.title}
+                              />
+                            ))}
+                          </SourcesContent>
+                        </Sources>
+                      )}
+                      {message.reasoning && (
+                        <Reasoning duration={message.reasoning.duration}>
+                          <ReasoningTrigger />
+                          <ReasoningContent>
+                            {message.reasoning.content}
+                          </ReasoningContent>
+                        </Reasoning>
+                      )}
+                      <MessageContent>
+                        <Response>{version.content}</Response>
+                      </MessageContent>
+                    </div>
+                    <MessageAvatar name={message.name} src={message.avatar} />
+                  </Message>
+                ))}
+              </BranchMessages>
+              {versions.length > 1 && (
+                <BranchSelector from={message.from}>
+                  <BranchPrevious />
+                  <BranchPage />
+                  <BranchNext />
+                </BranchSelector>
+              )}
+            </Branch>
+          ))}
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
+      <div className='grid shrink-0 gap-4 pt-4'>
+        <div className='w-full px-4 pb-4'>
+          <PromptInput globalDrop multiple onSubmit={handleSubmit}>
+            <PromptInputHeader>
+              <PromptInputAttachments>
+                {(attachment) => <PromptInputAttachment data={attachment} />}
+              </PromptInputAttachments>
+            </PromptInputHeader>
+            <PromptInputBody>
+              <PromptInputTextarea
+                onChange={(event) => setText(event.target.value)}
+                value={text}
+              />
+            </PromptInputBody>
+            <PromptInputFooter className='py-1'>
+              <PromptInputTools>
+                <PromptInputActionMenu>
+                  <PromptInputActionMenuTrigger />
+                  <PromptInputActionMenuContent>
+                    <PromptInputActionAddAttachments />
+                  </PromptInputActionMenuContent>
+                </PromptInputActionMenu>
+                <PromptInputButton
+                  onClick={() => setUseMicrophone(!useMicrophone)}
+                  variant={useMicrophone ? "default" : "ghost"}
+                >
+                  <MicIcon size={16} />
+                  <span className='sr-only'>Microphone</span>
+                </PromptInputButton>
+                {/* <PromptInputButton
                   onClick={() => setUseWebSearch(!useWebSearch)}
                   variant={useWebSearch ? 'default' : 'ghost'}
                 >
                   <GlobeIcon size={16} />
                   <span>Search</span>
                 </PromptInputButton> */}
-                </PromptInputTools>
-                <PromptInputSubmit
-                  disabled={
-                    !isInitialized || !text.trim() || status === "streaming"
-                  }
-                  status={status}
-                />
-              </PromptInputFooter>
-            </PromptInput>
-          </div>
+              </PromptInputTools>
+              <PromptInputSubmit
+                disabled={
+                  !isInitialized || !text.trim() || status === "streaming"
+                }
+                status={status}
+              />
+            </PromptInputFooter>
+          </PromptInput>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 };
 
 export default Example;

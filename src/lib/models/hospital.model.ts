@@ -1,51 +1,38 @@
 import { Schema, model, models } from 'mongoose';
 import { HospitalType, OwnershipType } from '../enums';
 
-const HospitalLocationSchema = new Schema(
+const LocationSchema = new Schema(
   {
-    address: String,
+    area: String,
     city: String,
-    state: String
+    country: String,
+    latitude: Number,
+    longitude: Number
   },
   { _id: false }
 );
 
-const DepartmentServiceSchema = new Schema(
+const ContactSchema = new Schema(
   {
-    generalOPD: String,
-    immunization: String,
-    TBControl: String,
-    minorProcedures: String,
-    basicEmergency: String,
-    LHV_Services: String,
-    deliveryRoom: String,
-    basicLabTests: String,
-    malariaSmear: String
-  },
-  { _id: false }
-);
-
-const DepartmentsSchema = new Schema(
-  {
-    'medicine&applied': DepartmentServiceSchema,
-    'surgery&allied': DepartmentServiceSchema,
-    'accident&emergency': DepartmentServiceSchema,
-    'pathalogy&laboratory': DepartmentServiceSchema
+    primaryNumber: String,
+    secondaryNumber: String
   },
   { _id: false }
 );
 
 const HospitalSchema = new Schema(
   {
-    hospitalName: { type: String, required: true },
-    hospitalAddress: String,
-    hospitalLocation: HospitalLocationSchema,
-    doctorId: String,
-    type: { type: String, required: true, enum: Object.values(OwnershipType) },
-    hospitalServices: [String],
-    numberOfBeds: String,
-    departments: DepartmentsSchema,
-    ntnNumber: { type: String, required: true }
+    name: { type: String, required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+    location: LocationSchema,
+    contact: ContactSchema,
+    type: { type: String, required: true, enum: Object.values(HospitalType) },
+    ownershipType: {
+      type: String,
+      required: true,
+      enum: Object.values(OwnershipType)
+    },
+    registrationNumber: { type: String, required: true }
   },
   { timestamps: true }
 );

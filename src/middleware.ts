@@ -6,6 +6,18 @@ const isProtectedRoute = createRouteMatcher(['/dashboard(.*)']);
 // Define route access rules based on roles
 const routeAccess = {
   admin: ['/dashboard(.*)'],
+  hospital: [
+    '/dashboard/overview',
+    '/dashboard/profile',
+    '/dashboard/appointments',
+    '/dashboard/patients',
+    '/dashboard/doctors',
+    '/dashboard/facilities',
+    '/dashboard/capacity',
+    '/dashboard/bills',
+    '/dashboard/workers',
+    '/dashboard/pharmacy'
+  ],
   doctor: [
     '/dashboard/overview',
     '/dashboard/profile',
@@ -53,15 +65,25 @@ export default clerkMiddleware(async (auth, req) => {
     // Get role from session claims (support various locations)
     const role = (sessionClaims?.public_metadata as any)?.role || 
                  (sessionClaims?.metadata as any)?.role || 
-                 (sessionClaims as any)?.role || 
-                 'patient';
+                 (sessionClaims as any)?.role;
+
+    // If user is explicitly a guest, redirect to onboarding
+    // If role is missing, we let them pass to dashboard layout which will check DB
+    if (role === 'guest') {
+      return NextResponse.redirect(new URL('/onboarding', req.url));
+    }
 
     const path = req.nextUrl.pathname;
     
-    // Admin has access to everything
-    if (role !== 'admin') {
+    // If we have a role, enforce RBAC
+    if (role && role !== 'admin') {
       // Check access for other roles
-      const allowedRoutes = routeAccess[role as keyof typeof routeAccess] || routeAccess.patient;
+      const allowedRoutes = routeAccess[role as keyof typeof routeAccess];
+
+      if (!allowedRoutes) {
+        // If role exists but has no routes defined, maybe invalid role?
+        return NextResponse.redirect(new URL('/onboarding', req.url));
+      }
       
       // Check if current path starts with any allowed route
       const hasAccess = allowedRoutes.some(route => {

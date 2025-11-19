@@ -50,6 +50,17 @@ import { OrgSwitcher } from '../org-switcher';
 
 const roleAccessMap: Record<string, string[]> = {
   admin: ['*'],
+  hospital: [
+    '/dashboard/overview',
+    '/dashboard/appointments',
+    '/dashboard/patients',
+    '/dashboard/doctors',
+    '/dashboard/facilities',
+    '/dashboard/capacity',
+    '/dashboard/bills',
+    '/dashboard/workers',
+    '/dashboard/pharmacy'
+  ],
   doctor: [
     '/dashboard/overview',
     '/dashboard/appointments',

@@ -244,7 +244,7 @@ async function handleUserCreated(data: ClerkWebhookEvent['data']) {
     const newUser = await UserModel.create({
       clerkId: userData.id,
       email: primaryEmail.email_address,
-      role: UserRole.PATIENT, // Default role
+      role: UserRole.GUEST, // Default role is GUEST until onboarding
       name: fullName || undefined,
       profile: {
         firstName: userData.first_name || undefined,

@@ -31,6 +31,7 @@ const AvailabilitySchema = new Schema(
 const DoctorSchema = new Schema(
   {
     name: { type: String, required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
     gender: { type: String, enum: Object.values(Gender) },
     dateOfBirth: Date,
     cnic: { type: String, required: true },
