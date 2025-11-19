@@ -178,6 +178,7 @@ async function handleUserCreated(data: ClerkWebhookEvent['data']) {
 
   if (!primaryEmail) {
     logger.error('No email address found for user:', userData.id);
+    logger.error('No email address found for user:', userData.id);
     throw new Error('No email address found');
   }
 

@@ -6,67 +6,82 @@ import {
   CardTitle,
   CardDescription
 } from '@/components/ui/card';
+import { formatDistanceToNow } from 'date-fns';
 
-const salesData = [
-  {
-    name: 'Olivia Martin',
-    email: 'olivia.martin@email.com',
-    avatar: 'https://api.slingacademy.com/public/sample-users/1.png',
-    fallback: 'OM',
-    amount: '+$1,999.00'
-  },
-  {
-    name: 'Jackson Lee',
-    email: 'jackson.lee@email.com',
-    avatar: 'https://api.slingacademy.com/public/sample-users/2.png',
-    fallback: 'JL',
-    amount: '+$39.00'
-  },
-  {
-    name: 'Isabella Nguyen',
-    email: 'isabella.nguyen@email.com',
-    avatar: 'https://api.slingacademy.com/public/sample-users/3.png',
-    fallback: 'IN',
-    amount: '+$299.00'
-  },
-  {
-    name: 'William Kim',
-    email: 'will@email.com',
-    avatar: 'https://api.slingacademy.com/public/sample-users/4.png',
-    fallback: 'WK',
-    amount: '+$99.00'
-  },
-  {
-    name: 'Sofia Davis',
-    email: 'sofia.davis@email.com',
-    avatar: 'https://api.slingacademy.com/public/sample-users/5.png',
-    fallback: 'SD',
-    amount: '+$39.00'
+// Fetch recent patient registrations
+async function getRecentPatients() {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/patients?limit=5`, {
+      cache: 'no-store'
+    });
+    const data = await response.json();
+    return data.success ? data.data : [];
+  } catch (error) {
+    console.error('Error fetching recent patients:', error);
+    return [];
   }
-];
+}
 
-export function RecentSales() {
+// Function to get initials from name
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+// Generate avatar URL based on name
+function generateAvatarUrl(name: string) {
+  const seed = name.toLowerCase().replace(/\s+/g, '');
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
+}
+
+export async function RecentSales() {
+  const patients = await getRecentPatients();
+
   return (
     <Card className='h-full'>
       <CardHeader>
-        <CardTitle>Recent Sales</CardTitle>
-        <CardDescription>You made 265 sales this month.</CardDescription>
+        <CardTitle>Recent Patient Registrations</CardTitle>
+        <CardDescription>
+          {patients.length > 0 
+            ? `${patients.length} new patients registered recently.`
+            : 'No recent patient registrations.'}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className='space-y-8'>
-          {salesData.map((sale, index) => (
-            <div key={index} className='flex items-center'>
-              <Avatar className='h-9 w-9'>
-                <AvatarImage src={sale.avatar} alt='Avatar' />
-                <AvatarFallback>{sale.fallback}</AvatarFallback>
-              </Avatar>
-              <div className='ml-4 space-y-1'>
-                <p className='text-sm leading-none font-medium'>{sale.name}</p>
-                <p className='text-muted-foreground text-sm'>{sale.email}</p>
-              </div>
-              <div className='ml-auto font-medium'>{sale.amount}</div>
+          {patients.length > 0 ? (
+            patients.map((patient: any, index: number) => {
+              const patientName = patient.patientName || patient.name || 'Unknown Patient';
+              const patientCnic = patient.patientCnic || patient.cnic || 'N/A';
+              const registrationDate = patient.createdAt 
+                ? formatDistanceToNow(new Date(patient.createdAt), { addSuffix: true })
+                : 'Recently';
+              
+              return (
+                <div key={patient._id || index} className='flex items-center'>
+                  <Avatar className='h-9 w-9'>
+                    <AvatarImage src={generateAvatarUrl(patientName)} alt='Patient Avatar' />
+                    <AvatarFallback>{getInitials(patientName)}</AvatarFallback>
+                  </Avatar>
+                  <div className='ml-4 space-y-1'>
+                    <p className='text-sm leading-none font-medium'>{patientName}</p>
+                    <p className='text-muted-foreground text-sm'>CNIC: {patientCnic}</p>
+                  </div>
+                  <div className='ml-auto text-sm text-muted-foreground'>
+                    {registrationDate}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className='flex items-center justify-center py-8'>
+              <p className='text-muted-foreground text-sm'>No patient registrations to display</p>
             </div>
-          ))}
+          )}
         </div>
       </CardContent>
     </Card>
