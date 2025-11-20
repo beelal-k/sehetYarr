@@ -20,7 +20,7 @@ import {
 export const description = 'Healthcare registrations over time';
 
 interface BarGraphProps {
-  data: Array<{ date: string; patients: number; doctors: number }>;
+  data?: Array<{ date: string; patients: number; doctors: number }>;
   role?: string;
 }
 
@@ -38,7 +38,7 @@ const chartConfig = {
   }
 } satisfies ChartConfig;
 
-export function BarGraph({ data, role = 'guest' }: BarGraphProps) {
+export function BarGraph({ data = [], role = 'guest' }: BarGraphProps) {
   const chartData = data.length > 0 ? data : [];
   const [activeChart, setActiveChart] =
     React.useState<keyof typeof chartConfig>('patients');

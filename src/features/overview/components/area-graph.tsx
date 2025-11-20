@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/chart';
 
 interface AreaGraphProps {
-  data: Array<{ month: string; scheduled: number; completed: number }>;
+  data?: Array<{ month: string; scheduled: number; completed: number }>;
   role?: string;
 }
 
@@ -37,7 +37,7 @@ const chartConfig = {
   }
 } satisfies ChartConfig;
 
-export function AreaGraph({ data, role = 'guest' }: AreaGraphProps) {
+export function AreaGraph({ data = [], role = 'guest' }: AreaGraphProps) {
   const chartData = data.length > 0 ? data : [];
   const totalScheduled = chartData.reduce((acc, curr) => acc + curr.scheduled, 0);
   const totalCompleted = chartData.reduce((acc, curr) => acc + curr.completed, 0);

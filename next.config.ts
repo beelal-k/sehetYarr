@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 
-// Define the base Next.js configuration
+// Define the base Next.js configuration with PWA headers
 const baseConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -9,10 +9,58 @@ const baseConfig: NextConfig = {
         protocol: 'https',
         hostname: 'api.slingacademy.com',
         port: ''
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.clerk.com',
+        port: ''
+      },
+      {
+        protocol: 'https',
+        hostname: '*.clerk.accounts.dev',
+        port: ''
       }
     ]
   },
-  transpilePackages: ['geist']
+  transpilePackages: ['geist'],
+  // Add security headers for PWA
+  async headers() {
+    return [
+      {
+        // Apply security headers to all routes (but NOT CSP - let Clerk handle that)
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+      {
+        // Service Worker specific headers (minimal CSP for SW only)
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/javascript; charset=utf-8',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          // Removed strict CSP - it was too restrictive and blocking Clerk
+        ],
+      },
+    ];
+  },
 };
 
 let configWithPlugins = baseConfig;

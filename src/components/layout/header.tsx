@@ -6,6 +6,7 @@ import SearchInput from '../search-input';
 import { UserNav } from './user-nav';
 import { ThemeSelector } from '../theme-selector';
 import { ModeToggle } from './ThemeToggle/theme-toggle';
+import { OfflineIndicator } from './offline-indicator';
 
 export default function Header() {
   return (
@@ -20,6 +21,7 @@ export default function Header() {
         <div className='hidden md:flex'>
           <SearchInput />
         </div>
+        <OfflineIndicator />
         <UserNav />
         <ModeToggle />
         <ThemeSelector />

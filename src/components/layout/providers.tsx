@@ -4,6 +4,7 @@ import { dark } from '@clerk/themes';
 import { useTheme } from 'next-themes';
 import React from 'react';
 import { ActiveThemeProvider } from '../active-theme';
+import { RxDBProvider } from '@/lib/offline/provider';
 
 export default function Providers({
   activeThemeValue,
@@ -23,7 +24,9 @@ export default function Providers({
             baseTheme: resolvedTheme === 'dark' ? dark : undefined
           }}
         >
-          {children}
+          <RxDBProvider>
+            {children}
+          </RxDBProvider>
         </ClerkProvider>
       </ActiveThemeProvider>
     </>

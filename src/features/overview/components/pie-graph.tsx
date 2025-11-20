@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/chart';
 
 interface PieGraphProps {
-  data: Array<{ demographic: string; patients: number }>;
+  data?: Array<{ demographic: string; patients: number }>;
   role?: string;
 }
 
@@ -50,7 +50,7 @@ const chartConfig = {
   }
 } satisfies ChartConfig;
 
-export function PieGraph({ data, role = 'guest' }: PieGraphProps) {
+export function PieGraph({ data = [], role = 'guest' }: PieGraphProps) {
   const chartData = data.length > 0 ? data : [];
 
   const totalPatients = React.useMemo(() => {

@@ -2,6 +2,7 @@ import Providers from '@/components/layout/providers';
 import { Toaster } from '@/components/ui/sonner';
 import { fontVariables } from '@/lib/font';
 import ThemeProvider from '@/components/layout/ThemeToggle/theme-provider';
+import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register';
 import { cn } from '@/lib/utils';
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
@@ -58,6 +59,7 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <NextTopLoader color='var(--primary)' showSpinner={false} />
+        <ServiceWorkerRegister />
         <NuqsAdapter>
           <ThemeProvider
             attribute='class'
