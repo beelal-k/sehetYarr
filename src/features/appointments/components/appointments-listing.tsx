@@ -3,12 +3,27 @@
 import { columns } from './appointments-tables/columns';
 import { AppointmentTable } from './appointments-tables';
 import { Appointment } from '@/types/appointment';
-import { useMemo } from 'react';
+import { useMemo, createContext, useContext } from 'react';
 import { useQueryState, parseAsInteger } from 'nuqs';
 import { DataTableSkeleton } from '@/components/ui/table/data-table-skeleton';
 import { useOfflineData } from '@/hooks/use-offline-data';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { WifiOff } from 'lucide-react';
+
+// Create a context for the refresh function
+interface AppointmentsContextType {
+  refresh: () => void;
+}
+
+const AppointmentsContext = createContext<AppointmentsContextType | null>(null);
+
+export const useAppointmentsRefresh = () => {
+  const context = useContext(AppointmentsContext);
+  if (!context) {
+    throw new Error('useAppointmentsRefresh must be used within AppointmentsListingPage');
+  }
+  return context;
+};
 
 export default function AppointmentsListingPage() {
   const [page] = useQueryState('page', parseAsInteger.withDefault(1));
@@ -28,7 +43,7 @@ export default function AppointmentsListingPage() {
     return `/api/appointments?${params}`;
   }, [page, perPage, search, status, priority]);
 
-  const { data: appointments, totalItems, loading, isFromCache } = useOfflineData<Appointment>({
+  const { data: appointments, totalItems, loading, isFromCache, refresh } = useOfflineData<Appointment>({
     collection: 'appointments',
     apiEndpoint,
   });
@@ -38,7 +53,7 @@ export default function AppointmentsListingPage() {
   }
 
   return (
-    <>
+    <AppointmentsContext.Provider value={{ refresh }}>
       {isFromCache && (
         <Alert className="mb-4 border-amber-500 bg-amber-50 dark:bg-amber-950">
           <WifiOff className="h-4 w-4" />
@@ -52,6 +67,6 @@ export default function AppointmentsListingPage() {
         totalItems={totalItems}
         columns={columns}
       />
-    </>
+    </AppointmentsContext.Provider>
   );
 }

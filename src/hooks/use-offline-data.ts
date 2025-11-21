@@ -3,7 +3,7 @@
  * Automatically falls back to RxDB when offline
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useOnlineStatus } from './use-online-status';
 import { getDatabase } from '@/lib/offline/database';
 
@@ -22,6 +22,11 @@ export function useOfflineData<T = any>(options: UseOfflineDataOptions) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFromCache, setIsFromCache] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const refresh = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     if (!enabled) {
@@ -151,7 +156,7 @@ export function useOfflineData<T = any>(options: UseOfflineDataOptions) {
     };
 
     fetchData();
-  }, [apiEndpoint, collection, enabled, isOnline]);
+  }, [apiEndpoint, collection, enabled, isOnline, refreshTrigger]);
 
   return {
     data,
@@ -159,6 +164,7 @@ export function useOfflineData<T = any>(options: UseOfflineDataOptions) {
     loading,
     error,
     isFromCache,
+    refresh,
     refetch: () => {
       // Trigger re-fetch by forcing a re-render
       setLoading(true);
