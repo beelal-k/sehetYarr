@@ -245,7 +245,6 @@ export const pa = {
     occupancy_percentage: 'قبضے دا فیصد',
     item: 'آئٹم',
     capacity: 'صلاحیت',
-    capacities: 'صلاحیتاں',
     manage_capacities: 'ہسپتال وارڈ دی صلاحیت تے بستر دی دستیابی دی نگرانی تے انتظام کرو۔',
     offline_cached_data: 'تسی آف لائن او۔ کیش کیتا ڈیٹا وکھا رہیا اے۔ آن لائن ہون تے تبدیلیاں رل جان گیاں۔',
     capacity_deleted: 'صلاحیت دا ریکارڈ کامیابی نال مٹا دتا گیا',
