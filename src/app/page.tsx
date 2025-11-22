@@ -1,14 +1,13 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import Header from '@/components/landing/header';
-import Hero from '@/components/landing/hero';
-import Services from '@/components/landing/services';
-import Integrations from '@/components/landing/integrations';
-import Doctors from '@/components/landing/doctors';
-import CTA from '@/components/landing/cta';
-import Stats from '@/components/landing/stats';
-import Testimonial from '@/components/landing/testimonial';
-import Footer from '@/components/landing/footer';
+import Header from './landing/components/Header';
+import Hero from './landing/components/Hero';
+import AiAgent from './landing/components/AiAgent';
+import QuickActions from './landing/components/QuickActions';
+import FeatureGrid from './landing/components/FeatureGrid';
+import Testimonials from './landing/components/Testimonials';
+import CTA from './landing/components/CTA';
+import Footer from './landing/components/Footer';
 
 export default async function Page() {
   const { userId } = await auth();
@@ -22,14 +21,13 @@ export default async function Page() {
   return (
     <main className='w-full bg-white'>
       <Header />
-      <div className='pt-14 sm:pt-16'>
+      <div className='pt-16'>
         <Hero />
+        <AiAgent />
+        <QuickActions />
+        <FeatureGrid />
+        <Testimonials />
         <CTA />
-        <Services />
-        <Integrations />
-        <Doctors />
-        <Stats />
-        <Testimonial />
         <Footer />
       </div>
     </main>

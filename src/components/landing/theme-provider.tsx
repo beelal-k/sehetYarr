@@ -1,11 +1,10 @@
-'use client'
+// Deprecated theme-provider for old landing. Prefer using new app-level theme providers if required.
 
-import * as React from 'react'
-import {
-  ThemeProvider as NextThemesProvider,
-  type ThemeProviderProps,
-} from 'next-themes'
+'use client';
 
-export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+// Old landing theme-provider deprecated
+// This module is kept for history but should not be used. If you need a theme provider, please use central app-level providers.
+
+export default function DeprecatedLandingThemeProvider() {
+  return null;
 }

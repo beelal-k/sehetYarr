@@ -201,8 +201,7 @@ export const landingHero = {
     "Connect with top specialists, schedule appointments, and manage your health records in one modern, secure platform.",
   primaryCta: "Schedule an appointment",
   secondaryCta: "Learn more",
-  image:
-    "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=900&q=80",
+  image: "/assets/images/doctor1.png",
   smallCard: {
     title: "Mitochondrial Test",
     by: "Test Lab",
