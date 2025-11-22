@@ -34,6 +34,8 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
+  PromptInputProvider,
+  usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
 import {
   Reasoning,
@@ -56,6 +58,9 @@ import { llmChatService } from "@/services/llmChat";
 import { useUser } from "@clerk/nextjs";
 import { ProgressNotification } from "@/components/chat/progress-notification";
 
+import { FileIcon, ImageIcon } from "lucide-react";
+import Image from "next/image";
+
 type MessageType = {
   key: string;
   from: "user" | "assistant";
@@ -76,31 +81,36 @@ type MessageType = {
     result: string | undefined;
     error: string | undefined;
   }[];
+  attachments?: { name: string; size: number; type: string; url: string }[]; // Attachment metadata
   avatar: string;
   name: string;
   type?: "thinking" | "quiz_artifact" | "video_artifact";
 };
 
+import { uploadFiles } from "@/services/upload";
+
 const initialMessages: MessageType[] = [];
 
-const Example = () => {
-  const [text, setText] = useState<string>("");
+const ChatContent = () => {
   const { user } = useUser();
-  const [useWebSearch, setUseWebSearch] = useState<boolean>(false);
   const [useMicrophone, setUseMicrophone] = useState<boolean>(false);
   const [status, setStatus] = useState<
     "submitted" | "streaming" | "ready" | "error"
   >("ready");
   const [messages, setMessages] = useState<MessageType[]>(initialMessages);
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
-    null
-  );
   const [chatId, setChatId] = useState<string>("");
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
-  const streamingContentRef = useRef<string>("");
+  const [isUploading, setIsUploading] = useState<boolean>(false);
   const streamingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [progressMessage, setProgressMessage] = useState<string>("");
   const [showProgress, setShowProgress] = useState<boolean>(false);
+  
+  const { textInput, attachments } = usePromptInputController();
+  
+  // Helper to access text input value safely
+  const text = textInput.value;
+  const setText = textInput.setInput;
+
   // Initialize chat session on mount
   useEffect(() => {
     const initChat = async () => {
@@ -266,12 +276,29 @@ const Example = () => {
       }
     };
 
+    // Handle disconnection
+    const handleDisconnect = (reason: string) => {
+      console.error("Socket disconnected in chat page handler:", reason);
+      console.trace("Disconnect stack trace:");
+      
+      if (reason === "io client disconnect") {
+        console.error("Client-initiated disconnect detected! This should not happen during normal message sending.");
+      } else if (reason === "io server disconnect") {
+        console.error("Server disconnected the socket");
+      } else if (reason === "ping timeout") {
+        console.error("Socket ping timeout");
+      } else if (reason === "transport close") {
+        console.error("Transport closed");
+      }
+    };
+
     // Register listeners
     llmChatService.onChunk(handleChunk);
     llmChatService.onGenerationComplete(handleGenerationComplete);
     llmChatService.onProgressUpdate(handleProgressUpdate);
     llmChatService.onError(handleError);
     llmChatService.onReconnect(handleReconnect);
+    llmChatService.onDisconnect(handleDisconnect);
 
     return () => {
       if (streamingTimeoutRef.current) {
@@ -282,7 +309,7 @@ const Example = () => {
   }, [isInitialized, chatId]);
 
   const sendMessage = useCallback(
-    async (content: string, attachments?: string[]) => {
+    async (content: string, attachments?: { name: string; size: number; type: string; url: string }[]) => {
       if (!isInitialized || !chatId) {
         console.warn("Chat not ready:", { isInitialized, chatId });
         toast.error("Chat not ready", {
@@ -302,6 +329,7 @@ const Example = () => {
               content,
             },
           ],
+          attachments,
           avatar: user?.imageUrl || "",
           name: user?.username || "User",
         };
@@ -319,6 +347,7 @@ const Example = () => {
           conversation_id: chatId,
           content,
           attachments: attachments || [],
+          role: "hospital",
         });
 
         console.log("Message sent successfully, waiting for ai_chunk events");
@@ -333,6 +362,62 @@ const Example = () => {
     [isInitialized, chatId, user]
   );
 
+  // Map to store uploaded file metadata: id -> { name, size, type, url }
+  const uploadedFilesMap = useRef<Map<string, { name: string; size: number; type: string; url: string }>>(new Map());
+
+  const onFilesAdded = async (files: any[]) => {
+      setIsUploading(true);
+      
+      // Mark newly added files as uploading in UI
+      files.forEach(f => {
+        attachments.update(f.id, { isUploading: true });
+      });
+
+      try {
+          const filesToUpload = files.map((f: any) => ({ file: f.file || f, id: f.id }));
+          const validFiles = filesToUpload.filter((f: any) => f.file instanceof File);
+          
+          if (validFiles.length === 0) {
+            setIsUploading(false);
+            return;
+          }
+
+          // Upload sequentially or parallel, but we need to match results back to IDs
+          const uploadPromises = validFiles.map(async (f: any) => {
+            try {
+               const url = await uploadFiles([f.file]);
+               const fileMetadata = {
+                 name: f.file.name,
+                 size: f.file.size,
+                 type: f.file.type || 'application/octet-stream',
+                 url: url[0]
+               };
+               uploadedFilesMap.current.set(f.id || f.file.name, fileMetadata);
+               // Update UI to show upload finished
+               attachments.update(f.id, { isUploading: false });
+               return fileMetadata;
+            } catch (e) {
+               console.error(`Failed to upload ${f.file.name}`, e);
+               // Could mark as error in UI if we had an error state
+               attachments.update(f.id, { isUploading: false });
+               return null;
+            }
+          });
+
+          await Promise.all(uploadPromises);
+          
+      } catch (e) {
+          console.error(e);
+          toast.error("Upload failed");
+          // Reset uploading state for all
+          files.forEach(f => {
+            attachments.update(f.id, { isUploading: false });
+          });
+      } finally {
+          setIsUploading(false);
+      }
+  };
+
   const handleSubmit = async (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
     const hasAttachments = Boolean(message.files?.length);
@@ -343,20 +428,75 @@ const Example = () => {
 
     setStatus("submitted");
 
-    // Handle file attachments (placeholder - implement file upload if needed)
-    let attachmentUrls: string[] = [];
+    // Handle file attachments - build array of attachment objects
+    let attachmentObjects: { name: string; size: number; type: string; url: string }[] = [];
     if (message.files?.length) {
-      toast.info("Files attached", {
-        description: `${message.files.length} file(s) will be processed`,
-      });
-      // TODO: Upload files to storage and get URLs
-      // For now, just use file URLs/names as placeholders
-      attachmentUrls = message.files.map((f) => f.url || "attachment");
+        console.log("Processing attachments:", message.files.length);
+        // Check if we already have uploaded metadata for these files
+        const pendingUploads: any[] = [];
+        const currentAttachments: { name: string; size: number; type: string; url: string }[] = [];
+
+        message.files.forEach((f: any) => {
+            const id = f.id || f.file?.name;
+            if (uploadedFilesMap.current.has(id)) {
+                console.log("Found uploaded file in map:", id);
+                currentAttachments.push(uploadedFilesMap.current.get(id)!);
+            } else if (f.file instanceof File) {
+                console.log("File needs upload:", f.file.name);
+                pendingUploads.push(f);
+            }
+        });
+
+        if (pendingUploads.length > 0) {
+             console.log("Uploading pending files:", pendingUploads.length);
+             setIsUploading(true);
+             // Mark pending as uploading
+             pendingUploads.forEach(f => attachments.update(f.id, { isUploading: true }));
+             
+             try {
+                 const newUrls = await uploadFiles(pendingUploads.map(f => f.file));
+                 console.log("Upload successful, urls:", newUrls);
+                 
+                 // Create attachment objects for newly uploaded files
+                 const newAttachments = pendingUploads.map((f, index) => ({
+                   name: f.file.name,
+                   size: f.file.size,
+                   type: f.file.type || 'application/octet-stream',
+                   url: newUrls[index]
+                 }));
+                 
+                 // Store in map for future reference
+                 pendingUploads.forEach((f, index) => {
+                   const id = f.id || f.file.name;
+                   uploadedFilesMap.current.set(id, newAttachments[index]);
+                 });
+                 
+                 currentAttachments.push(...newAttachments);
+                 pendingUploads.forEach(f => attachments.update(f.id, { isUploading: false }));
+             } catch (e) {
+                 console.error("Failed to upload pending files", e);
+                 toast.error("Some files failed to upload");
+                 pendingUploads.forEach(f => attachments.update(f.id, { isUploading: false }));
+             } finally {
+                 setIsUploading(false);
+             }
+        }
+        
+        attachmentObjects = currentAttachments;
+        
+        // Clean up map for sent files
+        message.files.forEach((f: any) => {
+             const id = f.id || f.file?.name;
+             uploadedFilesMap.current.delete(id);
+        });
     }
 
-    await sendMessage(message.text || "Sent with attachments", attachmentUrls);
+    console.log("Submitting message with attachments:", attachmentObjects);
+    await sendMessage(message.text || "Sent with attachments", attachmentObjects);
     setText("");
   };
+
+  const isSubmitDisabled = !isInitialized || !text.trim() || status === "streaming" || isUploading;
 
   return (
     <div className='relative flex size-full h-[91vh] flex-col divide-y overflow-hidden'>
@@ -396,6 +536,46 @@ const Example = () => {
                           </ReasoningContent>
                         </Reasoning>
                       )}
+                      {message.attachments && message.attachments.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {message.attachments.map((attachment, index) => {
+                            const isImage = attachment.type?.startsWith('image/') || attachment.url.match(/\.(jpeg|jpg|gif|png|webp)$/i);
+                            const fileName = attachment.name || attachment.url.split('/').pop() || 'Attachment';
+                            
+                            if (isImage) {
+                              return (
+                                <div key={index} className="relative max-w-[300px] max-h-[300px] rounded-md overflow-hidden">
+                                  <img 
+                                    src={attachment.url} 
+                                    alt={fileName} 
+                                    className="max-w-full max-h-full object-contain rounded-md"
+                                  />
+                                </div>
+                              );
+                            }
+                            
+                            return (
+                              <a 
+                                key={index} 
+                                href={attachment.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 p-2 bg-muted rounded-md border hover:bg-muted/80 transition-colors max-w-xs"
+                              >
+                                <div className="p-2 bg-background rounded border">
+                                  <FileIcon className="w-4 h-4 text-muted-foreground" />
+                                </div>
+                                <div className="flex flex-col overflow-hidden">
+                                  <span className="text-sm font-medium truncate">{fileName}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {attachment.size ? `${(attachment.size / 1024).toFixed(1)} KB` : 'Click to view'}
+                                  </span>
+                                </div>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
                       <MessageContent>
                         <Response>{version.content}</Response>
                       </MessageContent>
@@ -418,7 +598,7 @@ const Example = () => {
       </Conversation>
       <div className='grid shrink-0 gap-4 pt-4'>
         <div className='w-full px-4 pb-4'>
-          <PromptInput globalDrop multiple onSubmit={handleSubmit}>
+          <PromptInput globalDrop multiple onSubmit={handleSubmit} onFilesAdded={onFilesAdded}>
             <PromptInputHeader>
               <PromptInputAttachments>
                 {(attachment) => <PromptInputAttachment data={attachment} />}
@@ -454,9 +634,7 @@ const Example = () => {
                 </PromptInputButton> */}
               </PromptInputTools>
               <PromptInputSubmit
-                disabled={
-                  !isInitialized || !text.trim() || status === "streaming"
-                }
+                disabled={isSubmitDisabled}
                 status={status}
               />
             </PromptInputFooter>
@@ -464,6 +642,14 @@ const Example = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const Example = () => {
+  return (
+    <PromptInputProvider>
+      <ChatContent />
+    </PromptInputProvider>
   );
 };
 

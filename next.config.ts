@@ -19,6 +19,11 @@ const baseConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.clerk.accounts.dev',
         port: ''
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        port: ''
       }
     ]
   },

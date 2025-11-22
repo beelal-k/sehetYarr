@@ -17,12 +17,19 @@ export interface JoinRoomParams {
   chat_id: string;
 }
 
+export interface Attachment {
+  name: string;
+  size: number;
+  type: string;
+  url: string;
+}
+
 export interface UserMessageParams {
   conversation_id: string;
   content: string;
   role?: string;
   category?: string;
-  attachments?: string[];
+  attachments?: Attachment[];
   [key: string]: any;
 }
 
@@ -105,27 +112,35 @@ class LLMChatService {
    */
   async sendMessage(message: UserMessageParams): Promise<void> {
     return new Promise((resolve, reject) => {
+      // Build a clean message object with only serializable properties
       const userMessage = {
+        conversation_id: message.conversation_id,
+        content: message.content,
         role: message.role || "user",
         category: message.category || "chat",
         attachments: message.attachments || [],
-        ...message,
-        // Ensure core fields override defaults
-        conversation_id: message.conversation_id,
-        content: message.content,
+        // Only include type if it exists and is serializable
+        ...(message.type && { type: message.type }),
       };
+
+      console.log("Sending message via socket:", userMessage);
+      console.log("Attachments array:", JSON.stringify(userMessage.attachments));
 
       socket.emit(events.USER_MESSAGE, userMessage, (response: any) => {
         if (response?.error) {
+          console.error("Socket acknowledgment error:", response.error);
           reject(new Error(response.error));
         } else {
-          console.log("Message sent successfully");
+          console.log("Message sent successfully, acknowledgment received");
           resolve();
         }
       });
 
       // Fallback resolve if no acknowledgment
-      setTimeout(() => resolve(), 1000);
+      setTimeout(() => {
+        console.log("Message acknowledgment timeout, resolving anyway");
+        resolve();
+      }, 1000);
     });
   }
 
@@ -210,6 +225,14 @@ class LLMChatService {
   }
 
   /**
+   * Listen for disconnection events
+   * @param callback - Function to handle disconnection with reason
+   */
+  onDisconnect(callback: (reason: string) => void): void {
+    socket.on(events.DISCONNECT, callback);
+  }
+
+  /**
    * Stop AI generation
    */
   stopGeneration(): void {
@@ -240,6 +263,8 @@ class LLMChatService {
     socket.off(events.VISUALIZATION_STATUS_UPDATE);
     socket.off(events.ERROR);
     socket.off(events.RECONNECT);
+    socket.off(events.DISCONNECT);
+    socket.off(events.PROGRESS_UPDATE);
     console.log("All socket listeners removed");
   }
 
