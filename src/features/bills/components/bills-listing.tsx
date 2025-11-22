@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 import { useQueryState, parseAsInteger, parseAsArrayOf, parseAsStringEnum } from 'nuqs';
 import { DataTableSkeleton } from '@/components/ui/table/data-table-skeleton';
 import { useOfflineData } from '@/hooks/use-offline-data';
+import { useOnlineStatus } from '@/hooks/use-online-status';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { WifiOff, Plus } from 'lucide-react';
 import { useI18n } from '@/providers/i18n-provider';
@@ -41,6 +42,7 @@ export default function BillsListingPage() {
     collection: 'bills',
     apiEndpoint,
   });
+  const isOnline = useOnlineStatus();
 
   const columns = useMemo(() => getColumns(t), [t]);
 
@@ -63,7 +65,7 @@ export default function BillsListingPage() {
         </Link>
       </div>
       <Separator />
-      {isFromCache && (
+      {!isOnline && isFromCache && (
         <Alert className="mb-4 border-amber-500 bg-amber-50 dark:bg-amber-950">
           <WifiOff className="h-4 w-4" />
           <AlertDescription>

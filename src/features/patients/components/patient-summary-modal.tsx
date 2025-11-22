@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, FileText, Activity, Pill, Stethoscope } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useI18n } from '@/providers/i18n-provider';
 
 interface PatientSummaryModalProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ export const PatientSummaryModal: React.FC<PatientSummaryModalProps> = ({
   onClose,
   patient
 }) => {
+  const { t } = useI18n();
   const [fullPatient, setFullPatient] = useState<Patient | null>(null);
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -103,10 +105,10 @@ export const PatientSummaryModal: React.FC<PatientSummaryModalProps> = ({
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
             <FileText className="h-6 w-6" />
-            Patient Summary: {fullPatient?.name || patient.name}
+            {t('common.patient_summary')}: {fullPatient?.name || patient.name}
           </DialogTitle>
           <DialogDescription>
-            Overview of patient details and recent medical history
+            {t('common.overview_patient_details')}
           </DialogDescription>
         </DialogHeader>
 
@@ -122,38 +124,38 @@ export const PatientSummaryModal: React.FC<PatientSummaryModalProps> = ({
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground">
-                        Personal Info
+                        {t('common.personal_info')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-1">
                         <p className="text-sm">
-                          <span className="font-semibold">Name:</span>{' '}
+                          <span className="font-semibold">{t('common.name')}:</span>{' '}
                           {fullPatient?.name || patient.name}
                         </p>
                         <p className="text-sm">
-                          <span className="font-semibold">CNIC:</span>{' '}
+                          <span className="font-semibold">{t('common.cnic')}:</span>{' '}
                           {fullPatient?.cnic || patient.cnic || 'N/A'}
                         </p>
                         {fullPatient?.dateOfBirth || patient.dateOfBirth ? (
                           <p className="text-sm">
-                            <span className="font-semibold">Age:</span>{' '}
+                            <span className="font-semibold">{t('common.age')}:</span>{' '}
                             {new Date().getFullYear() -
                               new Date(fullPatient?.dateOfBirth || patient.dateOfBirth || new Date()).getFullYear()}
                           </p>
                         ) : null}
                         <p className="text-sm">
-                          <span className="font-semibold">Date of Birth:</span>{' '}
+                          <span className="font-semibold">{t('common.dob')}:</span>{' '}
                           {fullPatient?.dateOfBirth || patient.dateOfBirth
                             ? format(new Date(fullPatient?.dateOfBirth || patient.dateOfBirth || new Date()), 'PPP')
                             : 'N/A'}
                         </p>
                         <p className="text-sm">
-                          <span className="font-semibold">Gender:</span>{' '}
+                          <span className="font-semibold">{t('common.gender')}:</span>{' '}
                           {fullPatient?.gender || patient.gender || 'N/A'}
                         </p>
                         <p className="text-sm">
-                          <span className="font-semibold">Blood Group:</span>{' '}
+                          <span className="font-semibold">{t('common.blood_group')}:</span>{' '}
                           {fullPatient?.bloodGroup || patient.bloodGroup || 'N/A'}
                         </p>
                       </div>
@@ -163,29 +165,29 @@ export const PatientSummaryModal: React.FC<PatientSummaryModalProps> = ({
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground">
-                        Contact Details
+                        {t('common.contact_details')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-1">
                         <p className="text-sm">
-                          <span className="font-semibold">Primary Phone:</span>{' '}
+                          <span className="font-semibold">{t('common.primary_number')}:</span>{' '}
                           {fullPatient?.contact?.primaryNumber || patient.contact?.primaryNumber || 'N/A'}
                         </p>
                         <p className="text-sm">
-                          <span className="font-semibold">Secondary Phone:</span>{' '}
+                          <span className="font-semibold">{t('common.secondary_number')}:</span>{' '}
                           {fullPatient?.contact?.secondaryNumber || patient.contact?.secondaryNumber || 'N/A'}
                         </p>
                         <p className="text-sm">
-                          <span className="font-semibold">Address:</span>{' '}
+                          <span className="font-semibold">{t('common.address')}:</span>{' '}
                           {fullPatient?.contact?.address || patient.contact?.address || 'N/A'}
                         </p>
                         <p className="text-sm">
-                          <span className="font-semibold">City:</span>{' '}
+                          <span className="font-semibold">{t('common.city')}:</span>{' '}
                           {fullPatient?.contact?.city || patient.contact?.city || 'N/A'}
                         </p>
                         <p className="text-sm">
-                          <span className="font-semibold">State:</span>{' '}
+                          <span className="font-semibold">{t('common.state')}:</span>{' '}
                           {fullPatient?.contact?.state || patient.contact?.state || 'N/A'}
                         </p>
                       </div>
@@ -195,21 +197,21 @@ export const PatientSummaryModal: React.FC<PatientSummaryModalProps> = ({
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground">
-                        Emergency Contact
+                        {t('common.emergency_contact')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-1">
                         <p className="text-sm">
-                          <span className="font-semibold">Name:</span>{' '}
+                          <span className="font-semibold">{t('common.name')}:</span>{' '}
                           {fullPatient?.emergencyContact?.name || patient.emergencyContact?.name || 'N/A'}
                         </p>
                         <p className="text-sm">
-                          <span className="font-semibold">Relation:</span>{' '}
+                          <span className="font-semibold">{t('common.relation')}:</span>{' '}
                           {fullPatient?.emergencyContact?.relation || patient.emergencyContact?.relation || 'N/A'}
                         </p>
                         <p className="text-sm">
-                          <span className="font-semibold">Phone:</span>{' '}
+                          <span className="font-semibold">{t('common.phone')}:</span>{' '}
                           {fullPatient?.emergencyContact?.phoneNo || patient.emergencyContact?.phoneNo || 'N/A'}
                         </p>
                       </div>
@@ -224,7 +226,7 @@ export const PatientSummaryModal: React.FC<PatientSummaryModalProps> = ({
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Activity className="h-5 w-5" />
-                Recent Medical Records
+                {t('common.recent_medical_records')}
               </h3>
               
               {loading ? (
@@ -254,7 +256,7 @@ export const PatientSummaryModal: React.FC<PatientSummaryModalProps> = ({
                         <div className="space-y-3">
                           {record.symptoms && record.symptoms.length > 0 && (
                             <div>
-                              <p className="text-sm font-semibold mb-1">Symptoms:</p>
+                              <p className="text-sm font-semibold mb-1">{t('common.symptoms')}:</p>
                               <div className="flex flex-wrap gap-1">
                                 {record.symptoms.map((symptom, idx) => (
                                   <Badge key={idx} variant="secondary" className="text-xs">
@@ -268,7 +270,7 @@ export const PatientSummaryModal: React.FC<PatientSummaryModalProps> = ({
                           {record.prescriptions && record.prescriptions.length > 0 && (
                             <div>
                               <p className="text-sm font-semibold mb-1 flex items-center gap-1">
-                                <Pill className="h-3 w-3" /> Prescriptions:
+                                <Pill className="h-3 w-3" /> {t('common.prescriptions')}:
                               </p>
                               <ul className="text-sm list-disc list-inside text-muted-foreground">
                                 {record.prescriptions.map((p, idx) => (
@@ -294,7 +296,7 @@ export const PatientSummaryModal: React.FC<PatientSummaryModalProps> = ({
               ) : (
                 <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
                   <FileText className="h-10 w-10 mb-2 opacity-20" />
-                  <p>No medical records found</p>
+                  <p>{t('common.no_medical_records_found')}</p>
                 </div>
               )}
             </div>

@@ -206,7 +206,7 @@ export default function WorkerForm({
         <Form form={form} onSubmit={form.handleSubmit(onSubmit)} className='space-y-8'>
           <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
             <FormInput control={form.control} name='name' label={t('common.name')} placeholder={t('common.enter_name')} required />
-            <FormSelect control={form.control} name='gender' label={t('common.gender')} placeholder='Select gender' options={genderOptions} />
+            <FormSelect control={form.control} name='gender' label={t('common.gender')} placeholder={t('common.select_gender')} options={genderOptions} />
           </div>
 
           <div className='grid grid-cols-1 gap-6 md:grid-cols-3'>
@@ -216,17 +216,17 @@ export default function WorkerForm({
           </div>
 
           <div className='grid grid-cols-1 gap-6 md:grid-cols-3'>
-            <FormSelect control={form.control} name='designation' label={t('common.designation')} placeholder='Select designation' required options={designationOptions} />
-            <FormSelect control={form.control} name='department' label='Department' placeholder='Select department' options={departmentOptions} />
+            <FormSelect control={form.control} name='designation' label={t('common.designation')} placeholder={t('common.select_designation')} required options={designationOptions} />
+            <FormSelect control={form.control} name='department' label={t('common.department')} placeholder={t('common.select_department')} options={departmentOptions} />
             <FormInput control={form.control} name='experienceYears' label={t('common.experience_years')} placeholder='0' type='number' />
           </div>
 
-          <FormInput control={form.control} name='qualifications' label={t('common.qualification')} placeholder='Comma separated (e.g., BSc Nursing, Diploma in Emergency Care)' />
+          <FormInput control={form.control} name='qualifications' label={t('common.qualification')} placeholder={t('common.qualifications_placeholder')} />
 
           <div className='grid grid-cols-1 gap-6 md:grid-cols-3'>
-            <FormSelect control={form.control} name='shiftType' label={t('common.shift')} placeholder='Select shift' options={shiftTypeOptions} />
-            <FormInput control={form.control} name='shiftStartTime' label={t('common.start_time')} placeholder='HH:MM (e.g., 08:00)' />
-            <FormInput control={form.control} name='shiftEndTime' label={t('common.end_time')} placeholder='HH:MM (e.g., 16:00)' />
+            <FormSelect control={form.control} name='shiftType' label={t('common.shift')} placeholder={t('common.select_shift')} options={shiftTypeOptions} />
+            <FormInput control={form.control} name='shiftStartTime' label={t('common.start_time')} placeholder={t('common.time_placeholder')} />
+            <FormInput control={form.control} name='shiftEndTime' label={t('common.end_time')} placeholder={t('common.time_placeholder')} />
           </div>
 
           <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
@@ -235,20 +235,20 @@ export default function WorkerForm({
           </div>
 
           <div className='grid grid-cols-1 gap-6 md:grid-cols-3'>
-            <FormInput control={form.control} name='area' label='Area' placeholder='Enter area' />
+            <FormInput control={form.control} name='area' label={t('common.area')} placeholder={t('common.enter_area')} />
             <FormInput control={form.control} name='city' label={t('common.city')} placeholder={t('common.city')} />
             <FormInput control={form.control} name='state' label={t('common.state')} placeholder={t('common.state')} />
           </div>
 
-          <FormInput control={form.control} name='hospitalIds' label={t('common.hospitals')} placeholder='Comma separated hospital IDs' />
+          <FormInput control={form.control} name='hospitalIds' label={t('common.hospitals')} placeholder={t('common.comma_separated_hospital_ids')} />
 
           <FormInput control={form.control} name='licenseNumber' label={t('common.license_number')} placeholder={t('common.enter_license')} />
 
           <FormTextarea
             control={form.control}
             name='schemes'
-            label='Schemes' // Need key
-            placeholder='One per line: Scheme Name | Organization | Role&#10;Example: COVID Response | WHO | Medical Staff&#10;Emergency Care | Red Cross | Paramedic'
+            label={t('common.schemes')}
+            placeholder={t('common.schemes_placeholder')}
             config={{ rows: 4, maxLength: 1000, showCharCount: true }}
           />
 

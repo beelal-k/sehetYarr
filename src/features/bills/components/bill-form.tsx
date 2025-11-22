@@ -38,11 +38,11 @@ const formSchema = z.object({
   hospitalId: z.string().min(1, { message: 'Hospital is required.' }),
   doctorId: z.string().optional(),
   billDate: z.date(),
-  totalAmount: z.string().min(1, { message: 'Total amount is required.' }),
-  paidAmount: z.string().min(1, { message: 'Paid amount is required.' }),
+  totalAmount: z.coerce.number().min(0, { message: 'Total amount must be a positive number.' }),
+  paidAmount: z.coerce.number().min(0, { message: 'Paid amount must be a positive number.' }),
   status: z.enum(['Pending', 'Paid', 'Partial', 'Cancelled']),
   paymentMethod: z.enum(['Cash', 'Card', 'Bank Transfer', 'Insurance']),
-  discount: z.string().optional(),
+  discount: z.coerce.number().min(0).optional(),
   items: z.string().optional()
 });
 
@@ -127,11 +127,11 @@ export default function BillForm({
     hospitalId: typeof initialData?.hospitalId === 'object' ? initialData.hospitalId._id : initialData?.hospitalId || '',
     doctorId: typeof initialData?.doctorId === 'object' ? initialData.doctorId?._id : initialData?.doctorId || '',
     billDate: initialData?.billDate ? new Date(initialData.billDate) : new Date(),
-    totalAmount: initialData?.totalAmount?.toString() || '',
-    paidAmount: initialData?.paidAmount?.toString() || '',
+    totalAmount: initialData?.totalAmount || 0,
+    paidAmount: initialData?.paidAmount || 0,
     status: (initialData?.status || 'Pending') as 'Pending' | 'Paid' | 'Partial' | 'Cancelled',
     paymentMethod: (initialData?.paymentMethod || 'Cash') as 'Cash' | 'Card' | 'Bank Transfer' | 'Insurance',
-    discount: initialData?.discount?.toString() || '',
+    discount: initialData?.discount || undefined,
     items: formatItems(initialData?.items)
   };
 
@@ -162,11 +162,11 @@ export default function BillForm({
         hospitalId: values.hospitalId,
         doctorId: values.doctorId || undefined,
         billDate: values.billDate.toISOString(),
-        totalAmount: parseFloat(values.totalAmount),
-        paidAmount: parseFloat(values.paidAmount),
+        totalAmount: values.totalAmount,
+        paidAmount: values.paidAmount,
         status: values.status,
         paymentMethod: values.paymentMethod,
-        discount: values.discount ? parseFloat(values.discount) : undefined,
+        discount: values.discount != null && !isNaN(values.discount) && values.discount > 0 ? values.discount : undefined,
         items: parseItems(values.items || '')
       };
 

@@ -46,7 +46,9 @@ export const getColumns = (t: any): ColumnDef<Worker>[] => [
   },
   {
     accessorKey: 'department',
-    header: 'Department', // Need key
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={t('common.department')} />
+    ),
     cell: ({ row }) => {
       const department = row.getValue('department') as Worker['department'];
       return <div>{department || '-'}</div>;
