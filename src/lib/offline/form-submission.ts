@@ -10,6 +10,7 @@ export interface OfflineSubmissionResult {
   success: boolean;
   data?: any;
   error?: string;
+  message?: string;
   offline?: boolean;
   synced?: boolean;
 }

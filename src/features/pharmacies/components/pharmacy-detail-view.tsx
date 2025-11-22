@@ -87,6 +87,17 @@ export default function PharmacyDetailView({ pharmacyId }: { pharmacyId: string 
           // This handles cases where old data might be missing dosage or have string quantities
           if (pharmacyData.inventory && Array.isArray(pharmacyData.inventory)) {
             pharmacyData.inventory = pharmacyData.inventory
+              .filter(item => {
+                // First filter: only keep items that have all required fields
+                return item && 
+                       item.name && 
+                       String(item.name).trim() &&
+                       item.supplier && 
+                       String(item.supplier).trim() &&
+                       item.dosage &&
+                       String(item.dosage).trim() &&
+                       (item.quantity !== undefined && item.quantity !== null);
+              })
               .map(item => {
                 // Normalize quantity to number
                 let quantity = 0;
@@ -96,19 +107,19 @@ export default function PharmacyDetailView({ pharmacyId }: { pharmacyId: string 
                   quantity = item.quantity;
                 }
                 
+                // At this point, we know dosage exists (filtered above)
                 return {
                   name: String(item.name || '').trim(),
                   supplier: String(item.supplier || '').trim(),
                   quantity: quantity,
-                  dosage: item.dosage ? String(item.dosage).trim() : null
+                  dosage: String(item.dosage).trim()
                 };
               })
               .filter(item => {
-                // Only keep items that have all required fields
+                // Final filter: ensure all fields are valid after normalization
                 return item.name && 
                        item.supplier && 
                        item.dosage && 
-                       item.dosage.trim() !== '' &&
                        typeof item.quantity === 'number' &&
                        item.quantity >= 0;
               });
