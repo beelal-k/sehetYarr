@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { PatientSummaryModal } from '../patient-summary-modal';
 import { useI18n } from '@/providers/i18n-provider';
+import { useOfflineAuth } from '@/hooks/use-offline-auth';
 
 interface CellActionProps {
   data: Patient;
@@ -27,6 +28,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const [showSummary, setShowSummary] = useState(false);
   const router = useRouter();
   const { t } = useI18n();
+  const { user } = useOfflineAuth();
+  const role = (user?.publicMetadata?.role as string) || 'patient';
 
   const onConfirm = async () => {
     try {
@@ -83,14 +86,18 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           >
             <IconFileDescription className="mr-2 h-4 w-4" /> {t('common.view')}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/patients/${data._id}`)}
-          >
-            <IconEdit className="mr-2 h-4 w-4" /> {t('common.edit')}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setOpen(true)}>
-            <IconTrash className="mr-2 h-4 w-4" /> {t('common.delete')}
-          </DropdownMenuItem>
+          {role !== 'patient' && (
+            <>
+              <DropdownMenuItem
+                onClick={() => router.push(`/dashboard/patients/${data._id}`)}
+              >
+                <IconEdit className='mr-2 h-4 w-4' /> {t('common.edit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setOpen(true)}>
+                <IconTrash className='mr-2 h-4 w-4' /> {t('common.delete')}
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </>

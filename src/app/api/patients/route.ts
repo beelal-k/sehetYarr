@@ -115,6 +115,17 @@ export async function POST(req: NextRequest) {
 
     logger.info('Received patient creation request:', JSON.stringify(body, null, 2));
 
+    // Enforce RBAC for creation
+    if (userId) {
+      const user = await UserModel.findOne({ clerkId: userId });
+      if (user && user.role === UserRole.PATIENT) {
+        return NextResponse.json(
+          { success: false, error: 'Patients cannot create other patients' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Validate required fields
     const { name, gender, dateOfBirth, cnic } = body;
 

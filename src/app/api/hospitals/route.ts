@@ -94,6 +94,18 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
+    // Enforce RBAC for creation
+    const { userId } = await auth();
+    if (userId) {
+      const user = await UserModel.findOne({ clerkId: userId });
+      if (user && user.role === UserRole.PATIENT) {
+        return NextResponse.json(
+          { success: false, error: 'Patients cannot create hospitals' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Validate required fields
     const { name, type, ownershipType, registrationNumber } = body;
 

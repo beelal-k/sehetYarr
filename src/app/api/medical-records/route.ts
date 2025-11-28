@@ -112,6 +112,18 @@ export async function POST(req: NextRequest) {
     // Validate required fields
     const { patientId, doctorId, hospitalId } = body;
 
+    // Enforce RBAC for creation
+    const { userId } = await auth();
+    if (userId) {
+      const user = await UserModel.findOne({ clerkId: userId });
+      if (user && user.role === UserRole.PATIENT) {
+        return NextResponse.json(
+          { success: false, error: 'Patients cannot create medical records' },
+          { status: 403 }
+        );
+      }
+    }
+
     if (!patientId || !doctorId || !hospitalId) {
       return NextResponse.json(
         {

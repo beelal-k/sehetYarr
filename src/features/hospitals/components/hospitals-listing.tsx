@@ -15,9 +15,12 @@ import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
+import { useOfflineAuth } from '@/hooks/use-offline-auth';
 
 export default function HospitalsListingPage() {
   const { t } = useI18n();
+  const { user } = useOfflineAuth();
+  const role = (user?.publicMetadata?.role as string) || 'patient';
   const [page] = useQueryState('page', parseAsInteger.withDefault(1));
   const [perPage] = useQueryState('perPage', parseAsInteger.withDefault(10));
   const [search] = useQueryState('name');
@@ -53,12 +56,14 @@ export default function HospitalsListingPage() {
           title={t('common.hospitals')}
           description={t('common.manage_hospital_records')}
         />
-        <Link
-          href='/dashboard/hospitals/new'
-          className={cn(buttonVariants(), 'text-xs md:text-sm')}
-        >
-          <Plus className='mr-2 h-4 w-4' /> {t('common.create_new')}
-        </Link>
+        {role !== 'patient' && (
+          <Link
+            href='/dashboard/hospitals/new'
+            className={cn(buttonVariants(), 'text-xs md:text-sm')}
+          >
+            <Plus className='mr-2 h-4 w-4' /> {t('common.create_new')}
+          </Link>
+        )}
       </div>
       <Separator />
       {isFromCache && (

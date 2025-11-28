@@ -90,7 +90,6 @@ const roleAccessMap: Record<string, string[]> = {
     '/dashboard/medical-records',
     '/dashboard/bills',
     '/dashboard/chat',
-    '/dashboard/doctors',
     '/dashboard/hospitals',
     '/dashboard/product'
   ]

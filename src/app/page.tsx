@@ -26,7 +26,6 @@ export default async function Page() {
         <AiAgent />
         <QuickActions />
         <FeatureGrid />
-        <Testimonials />
         <CTA />
         <Footer />
       </div>

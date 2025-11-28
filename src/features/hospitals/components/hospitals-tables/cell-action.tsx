@@ -14,6 +14,7 @@ import { IconEdit, IconDotsVertical, IconTrash } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useOfflineAuth } from '@/hooks/use-offline-auth';
 
 interface CellActionProps {
   data: Hospital;
@@ -23,6 +24,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const { user } = useOfflineAuth();
+  const role = (user?.publicMetadata?.role as string) || 'patient';
 
   const onConfirm = async () => {
     try {
@@ -46,6 +49,10 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       setOpen(false);
     }
   };
+
+  if (role === 'patient') {
+    return null;
+  }
 
   return (
     <>

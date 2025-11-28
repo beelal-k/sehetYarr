@@ -49,7 +49,6 @@ const routeAccess = {
     '/dashboard/medical-records',
     '/dashboard/bills',
     '/dashboard/chat',
-    '/dashboard/doctors',
     '/dashboard/hospitals',
     '/dashboard/product'
   ]
