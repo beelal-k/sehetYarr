@@ -201,7 +201,7 @@ const ChatContent = () => {
               content: data.chunk || "",
             },
           ],
-          avatar: "https://github.com/openai.png",
+          avatar: "/logo.jpeg",
           name: "Assistant",
         };
 
