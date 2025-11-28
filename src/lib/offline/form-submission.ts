@@ -154,20 +154,33 @@ export async function submitWithOfflineSupport(
         }
       }
       
+      const existingDoc = await rxCollection.findOne(docId).exec();
+      const baseDoc = existingDoc ? (existingDoc.toJSON() as any) : {};
+
+      const pendingPayload = processedData;
+
       const docData = {
+        ...baseDoc,
         ...processedData,
         _id: docId,
+        createdAt: baseDoc.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         syncStatus: 'pending' as const, // Mark as pending sync
+        _deleted: false,
+        _attachments: baseDoc._attachments || {},
         _meta: {
+          ...baseDoc._meta,
           offline: true,
           pending: true,
-          createdAt: new Date().toISOString(),
+          pendingPayload,
+          createdAt: baseDoc._meta?.createdAt || new Date().toISOString(),
         },
       };
 
       // Save to RxDB
-      const doc = await rxCollection.upsert(docData);
+      const doc = existingDoc
+        ? await existingDoc.incrementalModify(() => docData)
+        : await rxCollection.upsert(docData);
       
       toast.success('💾 Saved offline - will sync when online', {
         description: 'Your changes are saved locally and will be synced automatically when you reconnect.',
@@ -280,6 +293,8 @@ export async function markAsSynced(
         $set: {
           '_meta.pending': false,
           '_meta.syncedAt': new Date().toISOString(),
+          '_meta.pendingPayload': undefined,
+          syncStatus: 'synced',
         } as any, // Type assertion needed as _meta is not in schema
       });
       

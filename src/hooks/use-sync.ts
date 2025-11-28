@@ -32,10 +32,11 @@ export function useSync() {
           : `/api/${endpointName}/${item._id}`;
 
         // Prepare payload (remove internal fields)
-        const { _id, _rev, _meta, updatedAt, createdAt, syncStatus, ...payload } = item;
-        
-        // For updates, we might want to preserve some fields or send partial updates
-        // For now, sending full payload minus internal fields
+        const { _id, _rev, _meta, updatedAt, createdAt, syncStatus, ...rawPayload } = item;
+        const payload =
+          _meta?.pendingPayload && Object.keys(_meta.pendingPayload).length > 0
+            ? _meta.pendingPayload
+            : rawPayload;
 
         console.log(`[Sync] Syncing item ${item._id} to ${url} (${method})`);
 

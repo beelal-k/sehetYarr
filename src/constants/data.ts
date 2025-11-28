@@ -93,14 +93,14 @@ export const navItems: NavItem[] = [
     isActive: false,
     items: [], // No child items
   },
-  {
-    title: "Facilities",
-    url: "/dashboard/facilities",
-    icon: "facility",
-    shortcut: ["f", "f"],
-    isActive: false,
-    items: [], // No child items
-  },
+  // {
+  //   title: "Facilities",
+  //   url: "/dashboard/facilities",
+  //   icon: "facility",
+  //   shortcut: ["f", "f"],
+  //   isActive: false,
+  //   items: [], // No child items
+  // },
   {
     title: "Capacities",
     url: "/dashboard/capacity",
