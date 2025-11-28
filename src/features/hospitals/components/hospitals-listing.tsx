@@ -57,12 +57,12 @@ export default function HospitalsListingPage() {
           description={t('common.manage_hospital_records')}
         />
         {role !== 'patient' && (
-          <Link
-            href='/dashboard/hospitals/new'
-            className={cn(buttonVariants(), 'text-xs md:text-sm')}
-          >
-            <Plus className='mr-2 h-4 w-4' /> {t('common.create_new')}
-          </Link>
+        <Link
+          href='/dashboard/hospitals/new'
+          className={cn(buttonVariants(), 'text-xs md:text-sm')}
+        >
+          <Plus className='mr-2 h-4 w-4' /> {t('common.create_new')}
+        </Link>
         )}
       </div>
       <Separator />

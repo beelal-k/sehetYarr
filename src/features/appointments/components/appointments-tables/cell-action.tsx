@@ -44,6 +44,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const onDelete = async () => {
     try {
       setLoading(true);
+      
       const response = await fetch(`/api/appointments/${data._id}`, {
         method: 'DELETE',
         credentials: 'include'
@@ -68,20 +69,26 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const onCancel = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/appointments/${data._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status: 'Cancelled' })
-      });
-
-      const result = await response.json();
+      
+      const { submitWithOfflineSupport } = await import('@/lib/offline/form-submission');
+      
+      const result = await submitWithOfflineSupport(
+        'appointments',
+        { status: 'Cancelled' },
+        {
+          apiEndpoint: `/api/appointments/${data._id}`,
+          method: 'PUT',
+          id: data._id
+        }
+      );
 
       if (result.success) {
-        toast.success('Appointment cancelled successfully');
+        if (!result.offline) {
+          toast.success('Appointment cancelled successfully');
+        }
         refresh();
       } else {
-        toast.error(result.message || 'Failed to cancel appointment');
+        toast.error(result.error || 'Failed to cancel appointment');
       }
     } catch (error) {
       toast.error('Something went wrong');
@@ -109,18 +116,22 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         });
       };
 
-      // Update appointment status
-      const appointmentResponse = await fetch(`/api/appointments/${data._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status: 'Completed' })
-      });
+      // Import offline submission utility
+      const { submitWithOfflineSupport } = await import('@/lib/offline/form-submission');
 
-      const appointmentResult = await appointmentResponse.json();
+      // Update appointment status
+      const appointmentResult = await submitWithOfflineSupport(
+        'appointments',
+        { status: 'Completed' },
+        {
+          apiEndpoint: `/api/appointments/${data._id}`,
+          method: 'PUT',
+          id: data._id
+        }
+      );
 
       if (!appointmentResult.success) {
-        toast.error(appointmentResult.message || 'Failed to update appointment');
+        toast.error(appointmentResult.error || 'Failed to update appointment');
         return;
       }
 
@@ -141,9 +152,6 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         discount: billingData.discount || 0,
         items: parseItems(billingData.billItems || '')
       };
-
-      // Import offline submission utility
-      const { submitWithOfflineSupport } = await import('@/lib/offline/form-submission');
       
       const billResult = await submitWithOfflineSupport(
         'bills',

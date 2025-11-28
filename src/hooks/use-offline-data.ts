@@ -6,6 +6,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useOnlineStatus } from './use-online-status';
 import { getDatabase } from '@/lib/offline/database';
+import { getPendingSubmissions } from '@/lib/offline/form-submission';
 
 export interface UseOfflineDataOptions {
   collection: 'patients' | 'doctors' | 'appointments' | 'hospitals' | 'bills' | 'medical_records' | 'workers' | 'facilities' | 'capacity' | 'pharmacies';
@@ -62,8 +63,17 @@ export function useOfflineData<T = any>(options: UseOfflineDataOptions) {
           });
 
           if (result.success) {
-            setData(result.data || []);
-            setTotalItems(result.pagination?.total || result.data?.length || 0);
+            // Fetch pending items from RxDB
+            const pendingItems = await getPendingSubmissions(collection);
+            const apiData = result.data || [];
+            
+            // Merge pending items with API data
+            // Pending items should appear first or merged if updating existing
+            // Filter out API items that are being updated by pending items (not applicable for temp IDs)
+            const mergedData = [...pendingItems, ...apiData];
+            
+            setData(mergedData);
+            setTotalItems((result.pagination?.total || 0) + pendingItems.length);
             setIsFromCache(false);
             
             // Also cache in RxDB for offline access

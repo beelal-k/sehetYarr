@@ -6,6 +6,7 @@ import React from 'react';
 import { ActiveThemeProvider } from '../active-theme';
 import { RxDBProvider } from '@/lib/offline/provider';
 import { I18nProvider } from '@/providers/i18n-provider';
+import { SyncProvider } from '@/providers/sync-provider';
 
 export default function Providers({
   activeThemeValue,
@@ -27,7 +28,9 @@ export default function Providers({
         >
           <RxDBProvider>
             <I18nProvider>
-              {children}
+              <SyncProvider>
+                {children}
+              </SyncProvider>
             </I18nProvider>
           </RxDBProvider>
         </ClerkProvider>

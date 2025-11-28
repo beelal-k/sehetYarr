@@ -88,14 +88,14 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </DropdownMenuItem>
           {role !== 'patient' && (
             <>
-              <DropdownMenuItem
-                onClick={() => router.push(`/dashboard/patients/${data._id}`)}
-              >
+          <DropdownMenuItem
+            onClick={() => router.push(`/dashboard/patients/${data._id}`)}
+          >
                 <IconEdit className='mr-2 h-4 w-4' /> {t('common.edit')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setOpen(true)}>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setOpen(true)}>
                 <IconTrash className='mr-2 h-4 w-4' /> {t('common.delete')}
-              </DropdownMenuItem>
+          </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>

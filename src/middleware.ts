@@ -81,12 +81,12 @@ export default clerkMiddleware(async (auth, req) => {
       );
     } else {
       const { sessionClaims } = authObj;
-
+      
       // Get role from session claims (support various locations)
       const role =
         (sessionClaims?.public_metadata as any)?.role ||
-        (sessionClaims?.metadata as any)?.role ||
-        (sessionClaims as any)?.role;
+                   (sessionClaims?.metadata as any)?.role || 
+                   (sessionClaims as any)?.role;
 
       // If user is explicitly a guest, redirect to onboarding
       // If role is missing, we let them pass to dashboard layout which will check DB
@@ -95,7 +95,7 @@ export default clerkMiddleware(async (auth, req) => {
       }
 
       const path = req.nextUrl.pathname;
-
+      
       // If we have a role, enforce RBAC
       if (role && role !== 'admin') {
         // Check access for other roles
@@ -105,7 +105,7 @@ export default clerkMiddleware(async (auth, req) => {
           // If role exists but has no routes defined, maybe invalid role?
           return NextResponse.redirect(new URL('/onboarding', req.url));
         }
-
+        
         // Check if current path starts with any allowed route
         const hasAccess = allowedRoutes.some((route) => {
           if (route.includes('(.*)')) {
