@@ -60,54 +60,72 @@ export default clerkMiddleware(async (auth, req) => {
   let response = NextResponse.next();
 
   if (isProtectedRoute(req)) {
-    await auth.protect();
-    
-    const { sessionClaims } = await auth();
-    
-    // Get role from session claims (support various locations)
-    const role = (sessionClaims?.public_metadata as any)?.role || 
-                 (sessionClaims?.metadata as any)?.role || 
-                 (sessionClaims as any)?.role;
+    try {
+      await auth.protect();
+      
+      const { sessionClaims } = await auth();
+      
+      // Get role from session claims (support various locations)
+      const role = (sessionClaims?.public_metadata as any)?.role || 
+                   (sessionClaims?.metadata as any)?.role || 
+                   (sessionClaims as any)?.role;
 
-    // If user is explicitly a guest, redirect to onboarding
-    // If role is missing, we let them pass to dashboard layout which will check DB
-    if (role === 'guest') {
-      return NextResponse.redirect(new URL('/onboarding', req.url));
-    }
-
-    const path = req.nextUrl.pathname;
-    
-    // If we have a role, enforce RBAC
-    if (role && role !== 'admin') {
-      // Check access for other roles
-      const allowedRoutes = routeAccess[role as keyof typeof routeAccess];
-
-      if (!allowedRoutes) {
-        // If role exists but has no routes defined, maybe invalid role?
+      // If user is explicitly a guest, redirect to onboarding
+      // If role is missing, we let them pass to dashboard layout which will check DB
+      if (role === 'guest') {
         return NextResponse.redirect(new URL('/onboarding', req.url));
       }
-      
-      // Check if current path starts with any allowed route
-      const hasAccess = allowedRoutes.some(route => {
-        if (route.includes('(.*)')) {
-          const base = route.replace('(.*)', '');
-          return path.startsWith(base);
-        }
-        return path === route || path.startsWith(`${route}/`);
-      });
 
-      if (!hasAccess) {
-        // If trying to access a restricted page, redirect to their allowed home
-        // For now, redirect to overview if allowed, otherwise root
-        if (allowedRoutes.includes('/dashboard/overview')) {
-          // Avoid redirect loop if already on overview
-          if (path !== '/dashboard/overview') {
-            response = NextResponse.redirect(new URL('/dashboard/overview', req.url));
+      const path = req.nextUrl.pathname;
+      
+      // If we have a role, enforce RBAC
+      if (role && role !== 'admin') {
+        // Check access for other roles
+        const allowedRoutes = routeAccess[role as keyof typeof routeAccess];
+
+        if (!allowedRoutes) {
+          // If role exists but has no routes defined, maybe invalid role?
+          return NextResponse.redirect(new URL('/onboarding', req.url));
+        }
+        
+        // Check if current path starts with any allowed route
+        const hasAccess = allowedRoutes.some(route => {
+          if (route.includes('(.*)')) {
+            const base = route.replace('(.*)', '');
+            return path.startsWith(base);
           }
-        } else {
-          response = NextResponse.redirect(new URL('/', req.url));
+          return path === route || path.startsWith(`${route}/`);
+        });
+
+        if (!hasAccess) {
+          // If trying to access a restricted page, redirect to their allowed home
+          // For now, redirect to overview if allowed, otherwise root
+          if (allowedRoutes.includes('/dashboard/overview')) {
+            // Avoid redirect loop if already on overview
+            if (path !== '/dashboard/overview') {
+              response = NextResponse.redirect(new URL('/dashboard/overview', req.url));
+            }
+          } else {
+            response = NextResponse.redirect(new URL('/', req.url));
+          }
         }
       }
+    } catch (authError) {
+      // If Clerk auth fails (e.g., offline or network error), check for existing auth cookie
+      // This allows cached pages to load offline without redirecting to sign-in
+      console.log('[Middleware] Auth check failed, checking for cached session:', authError);
+      
+      const hasAuthCookie = req.cookies.get('__session') || req.cookies.get('serviceToken');
+      
+      if (!hasAuthCookie) {
+        // No cached session, user needs to authenticate
+        console.log('[Middleware] No cached session found, redirecting to sign-in');
+        return NextResponse.redirect(new URL('/auth/sign-in', req.url));
+      }
+      
+      // Has cached session, allow access (service worker will handle serving cached pages)
+      console.log('[Middleware] Cached session found, allowing access for offline use');
+      // Continue with default response
     }
   }
 
@@ -124,6 +142,7 @@ export default clerkMiddleware(async (auth, req) => {
     }
   } catch (error) {
     console.error('Error setting serviceToken:', error);
+    // Don't fail the request if token setting fails
   }
 
   return response;

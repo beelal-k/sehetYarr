@@ -144,9 +144,11 @@ self.addEventListener('fetch', (event) => {
           if (navigator.onLine) {
             fetch(request)
               .then((networkResponse) => {
-                if (networkResponse.ok && !networkResponse.redirected) {
+                // Only cache if it's not a redirect to auth pages
+                if (networkResponse.ok && !networkResponse.url.includes('/auth/')) {
                   caches.open(RUNTIME_CACHE).then((cache) => {
                     cache.put(request, networkResponse);
+                    console.log('[ServiceWorker] 🔄 Updated cache in background:', url.pathname);
                   });
                 }
               })
@@ -163,11 +165,25 @@ self.addEventListener('fetch', (event) => {
           .then((networkResponse) => {
             // Check if response is a redirect to auth
             if (networkResponse.redirected && networkResponse.url.includes('/auth/')) {
-              console.log('[ServiceWorker] ⚠️ Detected auth redirect, serving offline page');
-              return caches.match('/offline').then((offlinePage) => {
-                return offlinePage || new Response('Offline - Authentication required', {
-                  status: 503,
-                  statusText: 'Service Unavailable',
+              console.log('[ServiceWorker] ⚠️ Detected auth redirect, checking for cached version');
+              
+              // Try to find a cached version of the requested page
+              const normalizedUrl = new URL(request.url);
+              normalizedUrl.search = '';
+              
+              return caches.match(normalizedUrl).then((fallbackCache) => {
+                if (fallbackCache) {
+                  console.log('[ServiceWorker] ✅ Found cached version, serving instead of auth redirect');
+                  return fallbackCache;
+                }
+                
+                // No cached version, serve offline page instead of auth redirect
+                console.log('[ServiceWorker] 📴 No cached version, serving offline page');
+                return caches.match('/offline').then((offlinePage) => {
+                  return offlinePage || new Response('Offline - Authentication required', {
+                    status: 503,
+                    statusText: 'Service Unavailable',
+                  });
                 });
               });
             }
@@ -183,20 +199,32 @@ self.addEventListener('fetch', (event) => {
             return networkResponse;
           })
           .catch((error) => {
-            console.log('[ServiceWorker] ❌ Navigation failed:', error);
+            console.log('[ServiceWorker] ❌ Navigation failed (possibly offline):', error.message || error);
+            
             // Try to match with a normalized URL (without query params)
             const normalizedUrl = new URL(request.url);
             normalizedUrl.search = '';
+            
             return caches.match(normalizedUrl).then((cachedResponse) => {
               if (cachedResponse) {
-                console.log('[ServiceWorker] ✅ Serving from cache (normalized):', normalizedUrl.pathname);
+                console.log('[ServiceWorker] ✅ Serving from cache (normalized, offline):', normalizedUrl.pathname);
                 return cachedResponse;
               }
-              // Fallback to offline page
-              return caches.match('/offline').then((offlinePage) => {
-                return offlinePage || new Response('Offline - Page not cached', {
-                  status: 503,
-                  statusText: 'Service Unavailable',
+              
+              // Try original request path as fallback
+              return caches.match(url.pathname).then((pathCache) => {
+                if (pathCache) {
+                  console.log('[ServiceWorker] ✅ Serving from cache (path only):', url.pathname);
+                  return pathCache;
+                }
+                
+                // No cached version found, serve offline page
+                console.log('[ServiceWorker] 📴 No cached version found, serving offline page');
+                return caches.match('/offline').then((offlinePage) => {
+                  return offlinePage || new Response('Offline - Page not cached', {
+                    status: 503,
+                    statusText: 'Service Unavailable',
+                  });
                 });
               });
             });

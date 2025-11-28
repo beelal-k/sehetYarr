@@ -19,15 +19,22 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await currentUser();
-  if (user) {
-    await connectDB();
-    const dbUser = await UserModel.findOne({ clerkId: user.id });
-    
-    // If user is not in DB or is a guest, redirect to onboarding
-    if (!dbUser || dbUser.role === 'guest') {
-      redirect('/onboarding');
+  // Try to verify user in DB, but don't fail if offline
+  try {
+    const user = await currentUser();
+    if (user) {
+      await connectDB();
+      const dbUser = await UserModel.findOne({ clerkId: user.id });
+      
+      // If user is not in DB or is a guest, redirect to onboarding
+      if (!dbUser || dbUser.role === 'guest') {
+        redirect('/onboarding');
+      }
     }
+  } catch (error) {
+    // If this fails (offline mode), allow access anyway
+    // Client-side useOfflineAuth will handle showing cached user data
+    console.log('[DashboardLayout] Server-side user check failed (possibly offline), continuing with cached session:', error);
   }
 
   // Persisting the sidebar state in the cookie.
